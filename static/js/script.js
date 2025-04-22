@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const jsonInput = document.getElementById('json-input');
     const applyJsonBtn = document.getElementById('apply-json-btn');
+    const showTreeBtn = document.getElementById('show-tree-btn');
+    const treeModal = document.getElementById('tree-modal');
+    const closeTreeModalBtn = document.getElementById('close-tree-modal-btn');
+    const treeModeSelect = document.getElementById('tree-mode-select');
+    const treeOutput = document.getElementById('tree-output');
     
     // Переменные для drag-and-drop
     let draggedItem = null;
@@ -35,13 +40,21 @@ document.addEventListener('DOMContentLoaded', function() {
     jsonFileInput.addEventListener('change', handleJsonImport);
     exportJsonBtn.addEventListener('click', exportProjectJson);
     manualJsonBtn.addEventListener('click', openJsonModal);
-    closeModalBtn.addEventListener('click', closeJsonModal);
-    applyJsonBtn.addEventListener('click', applyManualJson);
     
-    // Закрытие модального окна при клике вне содержимого
+    // Добавляем проверки на существование элементов перед добавлением обработчиков
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeJsonModal);
+    if (applyJsonBtn) applyJsonBtn.addEventListener('click', applyManualJson);
+    if (showTreeBtn) showTreeBtn.addEventListener('click', openTreeModal);
+    if (closeTreeModalBtn) closeTreeModalBtn.addEventListener('click', closeTreeModal);
+    if (treeModeSelect) treeModeSelect.addEventListener('change', updateTreeView);
+    
+    // Закрытие модальных окон при клике вне содержимого
     window.addEventListener('click', (e) => {
         if (e.target === jsonModal) {
             closeJsonModal();
+        }
+        if (treeModal && e.target === treeModal) {
+            closeTreeModal();
         }
     });
     
@@ -326,6 +339,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.closest('.folder-items')) {
                 const folderItems = e.target.closest('.folder-items');
                 
+                // Проверка: не перетаскиваем ли элемент внутрь себя или своего потомка
+                const targetFolderItem = folderItems.closest('.folder-item');
+                if (draggedItem.contains(targetFolderItem)) {
+                    showMessage('Нельзя переместить элемент внутрь себя или своего потомка', 'error');
+                    return false;
+                }
+                
                 // Удаляем сообщение о пустой папке, если оно есть
                 const emptyFolders = folderItems.querySelectorAll('.empty-folder');
                 emptyFolders.forEach(emptyFolder => {
@@ -350,6 +370,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const targetItem = e.target.closest('.file-item, .folder-item');
                 
                 if (targetItem && targetItem !== draggedItem) {
+                    // Проверка: не перетаскиваем ли элемент относительно своего потомка
+                    if (draggedItem.contains(targetItem)) {
+                        showMessage('Нельзя переместить элемент относительно своего потомка', 'error');
+                        return false;
+                    }
+                    
                     const parent = targetItem.parentNode;
                     
                     if (targetItem.classList.contains('drag-over-top')) {
@@ -1349,5 +1375,95 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('Ошибка в формате JSON: ' + error.message, 'error');
             console.error('Ошибка обработки JSON:', error);
         }
+    }
+    
+    // Функция для открытия модального окна отображения дерева
+    function openTreeModal() {
+        treeModal.classList.add('active');
+        updateTreeView();
+    }
+    
+    // Закрытие модального окна дерева
+    function closeTreeModal() {
+        treeModal.classList.remove('active');
+    }
+    
+    // Обновление отображения дерева файлов
+    function updateTreeView() {
+        // Проверяем, существует ли элемент treeOutput
+        if (!treeOutput) return;
+        
+        // Получаем структуру проекта
+        const projectStructure = collectProjectStructure(structureContainer);
+        
+        // Генерируем отображение дерева в формате Unicode
+        const treeContent = generateUnicodeTree(projectStructure);
+        
+        // Отображаем дерево
+        treeOutput.textContent = treeContent;
+    }
+    
+    // Генерация Unicode-дерева файлов (с красивыми символами)
+    function generateUnicodeTree(items, prefix = '', isLast = true, rootName = projectNameInput.value.trim() || 'project') {
+        let result = prefix + (prefix ? (isLast ? '└─ ' : '├─ ') : '') + rootName + '/\n';
+        
+        if (!items || !items.length) {
+            return result;
+        }
+        
+        items.forEach((item, index) => {
+            const isLastItem = index === items.length - 1;
+            const newPrefix = prefix + (isLast ? '   ' : '│  ');
+            
+            if (item.type === 'folder') {
+                result += generateUnicodeTree(
+                    item.children || [], 
+                    newPrefix, 
+                    isLastItem,
+                    item.name
+                );
+            } else if (item.type === 'file') {
+                result += newPrefix + (isLastItem ? '└─ ' : '├─ ') + item.file_name + '\n';
+            }
+        });
+        
+        return result;
+    }
+    
+    // Функция для наблюдения за изменениями в структуре проекта
+    function setupStructureObserver() {
+        // Создаем наблюдатель за DOM-изменениями
+        const observer = new MutationObserver(function(mutations) {
+            // Обновляем отображение дерева при изменении структуры
+            updateTreeView();
+        });
+        
+        // Настройка наблюдателя: следим за добавлением/удалением дочерних элементов и изменениями атрибутов
+        const config = { 
+            childList: true, 
+            subtree: true, 
+            attributes: true,
+            attributeFilter: ['value'] 
+        };
+        
+        // Начинаем наблюдение за контейнером структуры
+        observer.observe(structureContainer, config);
+        
+        // Добавляем обработчики событий для полей ввода
+        structureContainer.addEventListener('input', function(e) {
+            if (e.target.matches('.file-name, .folder-name')) {
+                // Если изменилось имя файла или папки, обновляем дерево
+                updateTreeView();
+            }
+        });
+        
+        // Также обновляем дерево при изменении названия проекта
+        projectNameInput.addEventListener('input', updateTreeView);
+    }
+
+    // Инициализируем наблюдение за структурой, если есть элементы для отображения дерева
+    if (treeOutput) {
+        setupStructureObserver();
+        updateTreeView();
     }
 }); 
