@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const projectNameInput = document.getElementById('project-name');
     const projectIdInput = document.getElementById('project-id');
     const structureContainer = document.getElementById('structure-container');
+    const emptyStructure = document.getElementById('empty-structure');
     const addFolderBtn = document.getElementById('add-folder-btn');
     const addFileBtn = document.getElementById('add-file-btn');
     const saveProjectBtn = document.getElementById('save-project-btn');
@@ -21,6 +22,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Загрузка списка проектов при загрузке страницы
     loadProjects();
+    
+    // Проверка на пустую структуру
+    function checkEmptyStructure() {
+        if (structureContainer.children.length === 0 || 
+            (structureContainer.children.length === 1 && structureContainer.children[0].id === 'empty-structure')) {
+            emptyStructure.style.display = 'block';
+        } else {
+            emptyStructure.style.display = 'none';
+        }
+    }
     
     // Функция загрузки списка проектов
     function loadProjects() {
@@ -39,6 +50,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.textContent = project.name;
                     projectSelect.appendChild(option);
                 });
+                
+                // Проверка на пустую структуру
+                checkEmptyStructure();
             })
             .catch(error => {
                 showMessage('Ошибка загрузки проектов: ' + error.message, 'error');
@@ -54,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
             projectNameInput.value = '';
             projectIdInput.value = '';
             structureContainer.innerHTML = '';
+            checkEmptyStructure();
             return;
         }
         
@@ -75,6 +90,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         const fileItem = addFileWithData(structureContainer, fileData);
                     });
                 }
+                
+                // Проверка на пустую структуру
+                checkEmptyStructure();
             })
             .catch(error => {
                 showMessage('Ошибка загрузки проекта: ' + error.message, 'error');
@@ -88,7 +106,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const folderElement = addFolderWithData(container, item);
                 const folderContent = folderElement.querySelector('.folder-items');
                 
-                if (item.children && Array.isArray(item.children)) {
+                // Удаляем сообщение о пустой папке, если есть дочерние элементы
+                if (item.children && Array.isArray(item.children) && item.children.length > 0) {
+                    const emptyFolder = folderContent.querySelector('.empty-folder');
+                    if (emptyFolder) {
+                        folderContent.removeChild(emptyFolder);
+                    }
                     loadProjectStructure(item.children, folderContent);
                 }
             } else if (item.type === 'file') {
@@ -135,7 +158,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const folderItem = folderElement.querySelector('.folder-item');
         
         setupFolderEventHandlers(folderItem);
+        
+        // Проверяем наличие пустого состояния и удаляем его
+        const emptyFolder = container.querySelector('.empty-folder');
+        if (emptyFolder) {
+            container.removeChild(emptyFolder);
+        }
+        
         container.appendChild(folderItem);
+        checkEmptyStructure();
         return folderItem;
     }
     
@@ -153,6 +184,16 @@ document.addEventListener('DOMContentLoaded', function() {
         removeBtn.addEventListener('click', function() {
             const parent = folderItem.parentNode;
             parent.removeChild(folderItem);
+            
+            // Если после удаления папка пуста, добавляем сообщение о пустой папке
+            if (parent.children.length === 0 && parent.classList.contains('folder-items')) {
+                const emptyFolder = document.createElement('div');
+                emptyFolder.className = 'empty-folder';
+                emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
+                parent.appendChild(emptyFolder);
+            }
+            
+            checkEmptyStructure();
         });
         
         // Кнопка сворачивания/разворачивания
@@ -167,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         moveUpBtn.addEventListener('click', function() {
             const prev = folderItem.previousElementSibling;
-            if (prev) {
+            if (prev && !prev.classList.contains('empty-folder')) {
                 folderItem.parentNode.insertBefore(folderItem, prev);
             }
         });
@@ -199,7 +240,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileItem = fileElement.querySelector('.file-item');
         
         setupFileEventHandlers(fileItem);
+        
+        // Проверяем наличие пустого состояния и удаляем его
+        const emptyFolder = container.querySelector('.empty-folder');
+        if (emptyFolder) {
+            container.removeChild(emptyFolder);
+        }
+        
         container.appendChild(fileItem);
+        checkEmptyStructure();
         return fileItem;
     }
     
@@ -231,6 +280,16 @@ document.addEventListener('DOMContentLoaded', function() {
         removeBtn.addEventListener('click', function() {
             const parent = fileItem.parentNode;
             parent.removeChild(fileItem);
+            
+            // Если после удаления папка пуста, добавляем сообщение о пустой папке
+            if (parent.children.length === 0 && parent.classList.contains('folder-items')) {
+                const emptyFolder = document.createElement('div');
+                emptyFolder.className = 'empty-folder';
+                emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
+                parent.appendChild(emptyFolder);
+            }
+            
+            checkEmptyStructure();
         });
         
         // Кнопки перемещения
@@ -239,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         moveUpBtn.addEventListener('click', function() {
             const prev = fileItem.previousElementSibling;
-            if (prev) {
+            if (prev && !prev.classList.contains('empty-folder')) {
                 fileItem.parentNode.insertBefore(fileItem, prev);
             }
         });
@@ -283,9 +342,20 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = 0; i < children.length; i++) {
             const item = children[i];
             
+            // Пропускаем элементы, которые не являются частью структуры
+            if (item.id === 'empty-structure' || item.classList.contains('empty-folder')) {
+                continue;
+            }
+            
             if (item.classList.contains('folder-item')) {
                 const folderName = item.querySelector('.folder-name').value.trim();
                 const folderItemsContainer = item.querySelector('.folder-items');
+                
+                if (!folderName) {
+                    showMessage('Укажите имя для всех папок', 'error');
+                    item.querySelector('.folder-name').focus();
+                    return null;
+                }
                 
                 const folderData = {
                     type: 'folder',
@@ -293,12 +363,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     children: collectProjectStructure(folderItemsContainer)
                 };
                 
+                if (folderData.children === null) return null; // Произошла ошибка в дочерних элементах
+                
                 items.push(folderData);
             } else if (item.classList.contains('file-item')) {
                 const fileName = item.querySelector('.file-name').value.trim();
                 const description = item.querySelector('.file-description').value.trim();
                 const inputMockText = item.querySelector('.file-input-mock').value.trim();
                 const outputMockText = item.querySelector('.file-output-mock').value.trim();
+                
+                if (!fileName) {
+                    showMessage('Укажите имя для всех файлов', 'error');
+                    item.querySelector('.file-name').focus();
+                    return null;
+                }
                 
                 let inputMock = {}, outputMock = {};
                 
@@ -332,6 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!projectName) {
             showMessage('Введите название проекта', 'error');
+            projectNameInput.focus();
             return;
         }
         
@@ -339,6 +418,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const structure = collectProjectStructure(structureContainer);
         
         if (structure === null) return; // Произошла ошибка валидации
+        
+        // Если структура пуста, выводим предупреждение
+        if (structure.length === 0) {
+            if (!confirm('Структура проекта пуста. Вы уверены, что хотите сохранить?')) {
+                return;
+            }
+        }
         
         // Создание объекта проекта
         const project = {
@@ -351,6 +437,10 @@ document.addEventListener('DOMContentLoaded', function() {
             project.id = projectId;
         }
         
+        // Отображение индикатора загрузки
+        saveProjectBtn.disabled = true;
+        saveProjectBtn.innerHTML = '<span class="loading-spinner"></span> Сохранение...';
+        
         // Отправка данных на сервер
         fetch('/api/projects', {
             method: 'POST',
@@ -361,6 +451,10 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
+            // Восстановление кнопки
+            saveProjectBtn.disabled = false;
+            saveProjectBtn.innerHTML = '<svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" /></svg> Сохранить структуру';
+            
             if (data.success) {
                 showMessage('Структура проекта успешно сохранена', 'success');
                 // Обновление списка проектов и установка текущего проекта
@@ -380,6 +474,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            // Восстановление кнопки
+            saveProjectBtn.disabled = false;
+            saveProjectBtn.innerHTML = '<svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" /></svg> Сохранить структуру';
             showMessage('Произошла ошибка: ' + error.message, 'error');
         });
     }
@@ -388,16 +485,25 @@ document.addEventListener('DOMContentLoaded', function() {
     function showMessage(message, type) {
         statusMessage.textContent = message;
         statusMessage.className = type;
+        statusMessage.classList.add('active');
         
         // Автоматическое скрытие сообщения через 5 секунд
         setTimeout(() => {
-            statusMessage.textContent = '';
-            statusMessage.className = '';
+            statusMessage.classList.remove('active');
+            
+            // Очистка сообщения после анимации
+            setTimeout(() => {
+                statusMessage.textContent = '';
+                statusMessage.className = '';
+            }, 400);
         }, 5000);
     }
     
+    // Проверка на пустую структуру при загрузке
+    checkEmptyStructure();
+    
     // Добавление начальной папки или файла для нового проекта
     if (projectSelect.value === 'new' && structureContainer.children.length === 0) {
-        addFile(structureContainer);
+        emptyStructure.style.display = 'block';
     }
 }); 
