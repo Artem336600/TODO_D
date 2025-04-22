@@ -255,22 +255,139 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция добавления файла с данными
     function addFileWithData(container, fileData) {
         const fileItem = addFile(container);
-        
         fileItem.querySelector('.file-name').value = fileData.file_name || '';
         fileItem.querySelector('.file-description').value = fileData.description || '';
         
-        const inputMock = fileItem.querySelector('.file-input-mock');
-        const outputMock = fileItem.querySelector('.file-output-mock');
+        // Обработка пар ввод-вывод
+        const ioPairsContainer = fileItem.querySelector('.io-pairs');
+        // Удаляем первую пустую пару, которая создалась автоматически
+        ioPairsContainer.innerHTML = '';
         
-        if (fileData.input_mock) {
-            inputMock.value = JSON.stringify(fileData.input_mock, null, 2);
-        }
-        
-        if (fileData.output_mock) {
-            outputMock.value = JSON.stringify(fileData.output_mock, null, 2);
+        if (fileData.io_pairs && Array.isArray(fileData.io_pairs)) {
+            // Если существует массив пар, добавляем каждую из них
+            fileData.io_pairs.forEach((pairData, index) => {
+                addPairWithData(ioPairsContainer, pairData, index + 1);
+            });
+        } else if (fileData.input_mocks && fileData.output_mocks && 
+                   Array.isArray(fileData.input_mocks) && Array.isArray(fileData.output_mocks)) {
+            // Обратная совместимость с раздельными массивами входных и выходных данных
+            const maxPairs = Math.max(fileData.input_mocks.length, fileData.output_mocks.length);
+            
+            for (let i = 0; i < maxPairs; i++) {
+                const pairData = {
+                    input: fileData.input_mocks[i] || {},
+                    output: fileData.output_mocks[i] || {}
+                };
+                addPairWithData(ioPairsContainer, pairData, i + 1);
+            }
+        } else if (fileData.input_mock || fileData.output_mock) {
+            // Обратная совместимость с одиночными моками
+            const pairData = {
+                input: fileData.input_mock || {},
+                output: fileData.output_mock || {}
+            };
+            addPairWithData(ioPairsContainer, pairData, 1);
+        } else {
+            // Если нет моков, добавляем пустую пару
+            addPair(ioPairsContainer);
         }
         
         return fileItem;
+    }
+    
+    // Функция добавления пары с данными
+    function addPairWithData(container, pairData, index) {
+        const pairItem = document.createElement('div');
+        pairItem.className = 'mock-pair';
+        
+        pairItem.innerHTML = `
+            <div class="mock-header">
+                <span>Вариант ${index}</span>
+                <button type="button" class="remove-pair-btn btn-icon">✖</button>
+            </div>
+            <div class="mock-io-container">
+                <div class="mock-io-item">
+                    <label>Вход:</label>
+                    <textarea class="file-input-mock">${formatJsonData(pairData.input)}</textarea>
+                </div>
+                <div class="mock-io-arrow">→</div>
+                <div class="mock-io-item">
+                    <label>Выход:</label>
+                    <textarea class="file-output-mock">${formatJsonData(pairData.output)}</textarea>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(pairItem);
+        
+        // Подключение обработчика для кнопки удаления
+        const removeBtn = pairItem.querySelector('.remove-pair-btn');
+        removeBtn.addEventListener('click', function() {
+            if (container.querySelectorAll('.mock-pair').length <= 1) return;
+            container.removeChild(pairItem);
+            updatePairNumbers(container);
+        });
+        
+        // Валидация JSON в текстовых полях
+        pairItem.querySelectorAll('.file-input-mock, .file-output-mock').forEach(textarea => {
+            textarea.addEventListener('blur', function() {
+                validateJson(this);
+            });
+        });
+        
+        return pairItem;
+    }
+    
+    // Форматирование данных JSON
+    function formatJsonData(data) {
+        if (!data) return '';
+        
+        try {
+            if (typeof data === 'string') {
+                return data;
+            } else {
+                return JSON.stringify(data, null, 2);
+            }
+        } catch (e) {
+            return JSON.stringify({});
+        }
+    }
+    
+    // Функция добавления новой пары
+    function addPair(container) {
+        const pairCount = container.querySelectorAll('.mock-pair').length + 1;
+        return addPairWithData(container, { input: {}, output: {} }, pairCount);
+    }
+    
+    // Функция обновления нумерации вариантов
+    function updatePairNumbers(container) {
+        const pairItems = container.querySelectorAll('.mock-pair');
+        pairItems.forEach((item, index) => {
+            item.querySelector('.mock-header span').textContent = `Вариант ${index + 1}`;
+        });
+    }
+    
+    // Функция валидации JSON
+    function validateJson(element) {
+        const text = element.value.trim();
+        
+        if (!text) return; // Пустое поле допустимо
+        
+        try {
+            const parsed = JSON.parse(text);
+            
+            // Форматируем JSON и обновляем текстовое поле
+            element.value = JSON.stringify(parsed, null, 2);
+            
+            // Убираем класс ошибки, если он был
+            element.classList.remove('error');
+        } catch (e) {
+            // Устанавливаем класс ошибки
+            element.classList.add('error');
+            
+            // Показываем сообщение об ошибке в консоли
+            console.error(`Ошибка JSON в поле: ${e.message}`);
+        }
     }
     
     // Функция настройки обработчиков событий для файла
@@ -292,113 +409,143 @@ document.addEventListener('DOMContentLoaded', function() {
             checkEmptyStructure();
         });
         
-        // Кнопки перемещения
+        // Кнопки перемещения вверх/вниз
         const moveUpBtn = fileItem.querySelector('.move-up-btn');
         const moveDownBtn = fileItem.querySelector('.move-down-btn');
         
         moveUpBtn.addEventListener('click', function() {
+            const parent = fileItem.parentNode;
             const prev = fileItem.previousElementSibling;
             if (prev && !prev.classList.contains('empty-folder')) {
-                fileItem.parentNode.insertBefore(fileItem, prev);
+                parent.insertBefore(fileItem, prev);
             }
         });
         
         moveDownBtn.addEventListener('click', function() {
+            const parent = fileItem.parentNode;
             const next = fileItem.nextElementSibling;
             if (next) {
-                fileItem.parentNode.insertBefore(next, fileItem);
+                parent.insertBefore(next, fileItem);
             }
         });
         
-        // Добавление валидации JSON для полей ввода и вывода
-        const inputMock = fileItem.querySelector('.file-input-mock');
-        const outputMock = fileItem.querySelector('.file-output-mock');
+        // Кнопка добавления новой пары
+        const addPairBtn = fileItem.querySelector('.add-pair-btn');
+        const ioPairsContainer = fileItem.querySelector('.io-pairs');
         
-        [inputMock, outputMock].forEach(field => {
-            field.addEventListener('blur', function() {
-                validateJson(field);
+        addPairBtn.addEventListener('click', function() {
+            addPair(ioPairsContainer);
+        });
+        
+        // Подключение обработчиков для кнопок удаления пар
+        const removePairBtns = fileItem.querySelectorAll('.remove-pair-btn');
+        removePairBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const pairItem = this.closest('.mock-pair');
+                const pairsContainer = pairItem.parentNode;
+                
+                // Если это единственная пара, не удаляем её
+                if (pairsContainer.querySelectorAll('.mock-pair').length <= 1) {
+                    return;
+                }
+                
+                pairsContainer.removeChild(pairItem);
+                
+                // Обновляем нумерацию вариантов
+                updatePairNumbers(pairsContainer);
+            });
+        });
+        
+        // Валидация JSON в текстовых полях
+        fileItem.querySelectorAll('.file-input-mock, .file-output-mock').forEach(textarea => {
+            textarea.addEventListener('blur', function() {
+                validateJson(this);
             });
         });
     }
     
-    // Функция валидации JSON
-    function validateJson(element) {
-        if (!element.value.trim()) return;
-        
-        try {
-            JSON.parse(element.value);
-            element.style.borderColor = '#ddd';
-        } catch (e) {
-            element.style.borderColor = '#e74c3c';
-            showMessage('Некорректный JSON формат', 'error');
-        }
-    }
-    
-    // Функция для сбора структуры проекта (рекурсивная)
+    // Функция сбора структуры проекта
     function collectProjectStructure(container) {
         const items = [];
-        const children = container.children;
         
-        for (let i = 0; i < children.length; i++) {
-            const item = children[i];
-            
-            // Пропускаем элементы, которые не являются частью структуры
-            if (item.id === 'empty-structure' || item.classList.contains('empty-folder')) {
-                continue;
+        container.childNodes.forEach(element => {
+            // Пропускаем текстовые узлы и элемент пустого состояния
+            if (element.nodeType !== Node.ELEMENT_NODE || element.id === 'empty-structure' || element.classList.contains('empty-folder')) {
+                return;
             }
             
-            if (item.classList.contains('folder-item')) {
-                const folderName = item.querySelector('.folder-name').value.trim();
-                const folderItemsContainer = item.querySelector('.folder-items');
-                
-                if (!folderName) {
-                    showMessage('Укажите имя для всех папок', 'error');
-                    item.querySelector('.folder-name').focus();
-                    return null;
-                }
-                
-                const folderData = {
-                    type: 'folder',
-                    name: folderName,
-                    children: collectProjectStructure(folderItemsContainer)
-                };
-                
-                if (folderData.children === null) return null; // Произошла ошибка в дочерних элементах
-                
-                items.push(folderData);
-            } else if (item.classList.contains('file-item')) {
-                const fileName = item.querySelector('.file-name').value.trim();
-                const description = item.querySelector('.file-description').value.trim();
-                const inputMockText = item.querySelector('.file-input-mock').value.trim();
-                const outputMockText = item.querySelector('.file-output-mock').value.trim();
-                
-                if (!fileName) {
-                    showMessage('Укажите имя для всех файлов', 'error');
-                    item.querySelector('.file-name').focus();
-                    return null;
-                }
-                
-                let inputMock = {}, outputMock = {};
-                
-                try {
-                    if (inputMockText) inputMock = JSON.parse(inputMockText);
-                    if (outputMockText) outputMock = JSON.parse(outputMockText);
-                } catch (e) {
-                    showMessage('Проверьте формат JSON данных', 'error');
-                    return null;
-                }
-                
-                const fileData = {
+            if (element.classList.contains('file-item')) {
+                const fileItem = {
                     type: 'file',
-                    file_name: fileName,
-                    description: description,
-                    input_mock: inputMock,
-                    output_mock: outputMock
+                    file_name: element.querySelector('.file-name').value,
+                    description: element.querySelector('.file-description').value
                 };
                 
-                items.push(fileData);
+                // Получение пар ввод-вывод
+                const ioPairs = [];
+                element.querySelectorAll('.io-pairs .mock-pair').forEach(pairItem => {
+                    const inputMock = pairItem.querySelector('.file-input-mock');
+                    const outputMock = pairItem.querySelector('.file-output-mock');
+                    
+                    const inputText = inputMock.value.trim();
+                    const outputText = outputMock.value.trim();
+                    
+                    const pairData = {};
+                    
+                    if (inputText) {
+                        try {
+                            pairData.input = JSON.parse(inputText);
+                        } catch (e) {
+                            // Если данные не в формате JSON, сохраняем как строку
+                            pairData.input = inputText;
+                        }
+                    }
+                    
+                    if (outputText) {
+                        try {
+                            pairData.output = JSON.parse(outputText);
+                        } catch (e) {
+                            // Если данные не в формате JSON, сохраняем как строку
+                            pairData.output = outputText;
+                        }
+                    }
+                    
+                    if (Object.keys(pairData).length > 0) {
+                        ioPairs.push(pairData);
+                    }
+                });
+                
+                if (ioPairs.length > 0) {
+                    fileItem.io_pairs = ioPairs;
+                    
+                    // Для обратной совместимости
+                    if (ioPairs[0].input) {
+                        fileItem.input_mock = ioPairs[0].input;
+                    }
+                    if (ioPairs[0].output) {
+                        fileItem.output_mock = ioPairs[0].output;
+                    }
+                    
+                    // Еще для обратной совместимости отдельные массивы
+                    fileItem.input_mocks = ioPairs.map(pair => pair.input).filter(Boolean);
+                    fileItem.output_mocks = ioPairs.map(pair => pair.output).filter(Boolean);
+                }
+                
+                items.push(fileItem);
+            } else if (element.classList.contains('folder-item')) {
+                const folderItem = {
+                    type: 'folder',
+                    name: element.querySelector('.folder-name').value,
+                    children: []
+                };
+                
+                // Рекурсивно получаем содержимое папки
+                const folderContent = element.querySelector('.folder-items');
+                folderItem.children = collectProjectStructure(folderContent);
+                
+                items.push(folderItem);
             }
-        }
+        });
         
         return items;
     }
@@ -409,76 +556,76 @@ document.addEventListener('DOMContentLoaded', function() {
         const projectId = projectIdInput.value.trim();
         
         if (!projectName) {
-            showMessage('Введите название проекта', 'error');
+            showMessage('Укажите название проекта', 'error');
             projectNameInput.focus();
             return;
         }
         
-        // Сбор структуры проекта
-        const structure = collectProjectStructure(structureContainer);
-        
-        if (structure === null) return; // Произошла ошибка валидации
-        
-        // Если структура пуста, выводим предупреждение
-        if (structure.length === 0) {
-            if (!confirm('Структура проекта пуста. Вы уверены, что хотите сохранить?')) {
-                return;
-            }
+        // Проверка на валидность всех JSON полей
+        const invalidJsonFields = document.querySelectorAll('textarea.file-input-mock.error, textarea.file-output-mock.error');
+        if (invalidJsonFields.length > 0) {
+            showMessage('Проверьте корректность формата JSON во всех полях', 'error');
+            invalidJsonFields[0].focus();
+            return;
         }
         
-        // Создание объекта проекта
-        const project = {
+        // Проверка на заполненность всех обязательных полей
+        const emptyFileNames = document.querySelectorAll('.file-item .file-name:not([value])');
+        if (emptyFileNames.length > 0) {
+            showMessage('Укажите имена для всех файлов', 'error');
+            emptyFileNames[0].focus();
+            return;
+        }
+        
+        const emptyFolderNames = document.querySelectorAll('.folder-item .folder-name:not([value])');
+        if (emptyFolderNames.length > 0) {
+            showMessage('Укажите имена для всех папок', 'error');
+            emptyFolderNames[0].focus();
+            return;
+        }
+        
+        // Собираем структуру проекта
+        const projectStructure = collectProjectStructure(structureContainer);
+        
+        const projectData = {
             name: projectName,
-            structure: structure
+            structure: projectStructure
         };
         
-        // Добавление ID, если это существующий проект
         if (projectId) {
-            project.id = projectId;
+            projectData.id = projectId;
         }
         
-        // Отображение индикатора загрузки
-        saveProjectBtn.disabled = true;
-        saveProjectBtn.innerHTML = '<span class="loading-spinner"></span> Сохранение...';
-        
-        // Отправка данных на сервер
+        // Сохраняем проект через API
         fetch('/api/projects', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(project)
+            body: JSON.stringify(projectData)
         })
-        .then(response => response.json())
-        .then(data => {
-            // Восстановление кнопки
-            saveProjectBtn.disabled = false;
-            saveProjectBtn.innerHTML = '<svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" /></svg> Сохранить структуру';
-            
-            if (data.success) {
-                showMessage('Структура проекта успешно сохранена', 'success');
-                // Обновление списка проектов и установка текущего проекта
-                loadProjects();
-                
-                // Обновление ID проекта в форме
-                if (data.project && data.project.id) {
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Проект успешно сохранен', 'success');
+                    
+                    // Обновляем ID проекта в скрытом поле
                     projectIdInput.value = data.project.id;
                     
-                    // Выбор проекта в списке после загрузки списка
+                    // Обновляем список проектов
+                    loadProjects();
+                    
+                    // Выбираем сохраненный проект в списке
                     setTimeout(() => {
                         projectSelect.value = data.project.id;
-                    }, 300);
+                    }, 500);
+                } else {
+                    showMessage('Ошибка при сохранении проекта', 'error');
                 }
-            } else {
-                showMessage('Ошибка при сохранении проекта', 'error');
-            }
-        })
-        .catch(error => {
-            // Восстановление кнопки
-            saveProjectBtn.disabled = false;
-            saveProjectBtn.innerHTML = '<svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" /></svg> Сохранить структуру';
-            showMessage('Произошла ошибка: ' + error.message, 'error');
-        });
+            })
+            .catch(error => {
+                showMessage('Ошибка сохранения проекта: ' + error.message, 'error');
+            });
     }
     
     // Функция отображения статусного сообщения

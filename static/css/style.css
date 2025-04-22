@@ -486,14 +486,37 @@ h2 {
 
 @media (max-width: 768px) {
     .container {
-        padding: 0;
+        padding: 10px;
+    }
+    
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .project-selector, .project-form {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .mock-container {
+        padding: 5px;
+    }
+    
+    .mock-header {
+        flex-wrap: wrap;
+    }
+    
+    textarea.file-input-mock, textarea.file-output-mock {
+        min-height: 80px;
+    }
+    
+    .add-mock-btn {
+        margin-top: 5px;
+        width: 100%;
+        text-align: center;
     }
     
     header {
-        padding: 20px;
-    }
-    
-    .project-form {
         padding: 20px;
     }
     
@@ -521,5 +544,150 @@ h2 {
     
     .folder-actions {
         flex-direction: column;
+    }
+}
+
+/* Добавляем стили для управления несколькими моками */
+.mock-container {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 8px;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+}
+
+.mock-item {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #ddd;
+}
+
+.mock-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.mock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.add-mock-btn {
+    display: inline-block;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.add-mock-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.remove-mock-btn {
+    color: #c00;
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.remove-mock-btn:hover {
+    color: #f00;
+}
+
+/* Ошибка валидации JSON */
+textarea.error {
+    border-color: #e74c3c !important;
+    background-color: rgba(231, 76, 60, 0.05);
+}
+
+/* Стили для пар входных и выходных данных */
+.mock-io-container {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.mock-io-item {
+    flex: 1;
+}
+
+.mock-io-item label {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.mock-io-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin: 20px 0 0;
+    font-weight: bold;
+}
+
+.mock-pair {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #ddd;
+}
+
+.mock-pair:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.add-pair-btn {
+    display: inline-block;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.add-pair-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.remove-pair-btn {
+    color: #c00;
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.remove-pair-btn:hover {
+    color: #f00;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+    .mock-io-container {
+        flex-direction: column;
+    }
+    
+    .mock-io-arrow {
+        transform: rotate(90deg);
+        margin: 5px 0;
     }
 } 
