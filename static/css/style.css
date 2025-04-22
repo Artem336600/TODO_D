@@ -290,6 +290,7 @@ h2 {
     margin-bottom: 20px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .file-header h3,
@@ -299,6 +300,18 @@ h2 {
     margin: 0;
     font-size: 1.2rem;
     color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 85%;
+}
+
+/* Стили для отображения количества вариантов в заголовке */
+.file-header h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
 }
 
 .file-header h3:before {
@@ -375,6 +388,34 @@ h2 {
 
 .toggle-folder-btn:hover {
     background-color: #d1d5f0;
+}
+
+/* Добавление стилей для сворачиваемых файлов */
+.toggle-file-btn {
+    background-color: #e8f5e9;
+    color: var(--file-color);
+    transition: transform 0.3s ease;
+}
+
+.toggle-file-btn:hover {
+    background-color: #d0e8d4;
+}
+
+.file-collapsed .file-content {
+    display: none;
+}
+
+.file-collapsed .toggle-file-btn {
+    transform: rotate(-90deg);
+}
+
+.file-content {
+    transition: all 0.3s ease;
+}
+
+/* Добавляем стиль для файла, чтобы был визуально похож на папку */
+.file-item {
+    border-left: 3px solid var(--file-color);
 }
 
 .folder-item {
@@ -575,6 +616,12 @@ h2 {
     margin-bottom: 5px;
     font-weight: bold;
     color: #555;
+}
+
+/* Добавляем стили для нового контейнера с кнопками */
+.mock-header-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .add-mock-btn {

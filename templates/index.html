@@ -81,44 +81,48 @@
             <div class="file-header">
                 <h3>Файл</h3>
                 <div class="item-actions">
+                    <button class="toggle-file-btn btn-icon">▼</button>
                     <button class="move-up-btn btn-icon">▲</button>
                     <button class="move-down-btn btn-icon">▼</button>
                     <button class="remove-item-btn btn-icon">✖</button>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label>Имя файла:</label>
-                <input type="text" class="file-name" placeholder="Введите имя файла">
-            </div>
-            
-            <div class="form-group">
-                <label>Описание:</label>
-                <textarea class="file-description" placeholder="Опишите назначение файла"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Варианты входных и выходных данных:</label>
-                <div class="mock-container io-pairs">
-                    <div class="mock-pair">
-                        <div class="mock-header">
-                            <span>Вариант 1</span>
-                            <button type="button" class="remove-pair-btn btn-icon">✖</button>
-                        </div>
-                        <div class="mock-io-container">
-                            <div class="mock-io-item">
-                                <label>Вход:</label>
-                                <textarea class="file-input-mock" placeholder='{ "example": "value" }'></textarea>
+            <div class="file-content">
+                <div class="form-group">
+                    <label>Имя файла:</label>
+                    <input type="text" class="file-name" placeholder="Введите имя файла">
+                </div>
+                
+                <div class="form-group">
+                    <label>Описание:</label>
+                    <textarea class="file-description" placeholder="Опишите назначение файла"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Варианты входных и выходных данных:</label>
+                    <div class="mock-container io-pairs">
+                        <div class="mock-pair">
+                            <div class="mock-header">
+                                <div class="mock-header-actions">
+                                    <button type="button" class="remove-pair-btn btn-icon">✖</button>
+                                </div>
                             </div>
-                            <div class="mock-io-arrow">→</div>
-                            <div class="mock-io-item">
-                                <label>Выход:</label>
-                                <textarea class="file-output-mock" placeholder='{ "result": "value" }'></textarea>
+                            <div class="mock-io-container">
+                                <div class="mock-io-item">
+                                    <label>Вход:</label>
+                                    <textarea class="file-input-mock" placeholder='{ "example": "value" }'></textarea>
+                                </div>
+                                <div class="mock-io-arrow">→</div>
+                                <div class="mock-io-item">
+                                    <label>Выход:</label>
+                                    <textarea class="file-output-mock" placeholder='{ "result": "value" }'></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <button type="button" class="add-pair-btn">+ Добавить пару "вход-выход"</button>
                 </div>
-                <button type="button" class="add-pair-btn">+ Добавить вариант входных/выходных данных</button>
             </div>
         </div>
     </template>

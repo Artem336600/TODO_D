@@ -25,10 +25,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Проверка на пустую структуру
     function checkEmptyStructure() {
-        if (structureContainer.children.length === 0 || 
-            (structureContainer.children.length === 1 && structureContainer.children[0].id === 'empty-structure')) {
+        // Считаем реальные элементы структуры (папки и файлы), исключая служебные
+        const realItemsCount = Array.from(structureContainer.children).filter(
+            child => child.classList && 
+                    (child.classList.contains('folder-item') || 
+                     child.classList.contains('file-item'))
+        ).length;
+        
+        if (realItemsCount === 0) {
+            // Структура действительно пуста, показываем сообщение
             emptyStructure.style.display = 'block';
         } else {
+            // В структуре есть реальные элементы, скрываем сообщение
             emptyStructure.style.display = 'none';
         }
     }
@@ -154,19 +162,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Функция добавления новой папки
     function addFolder(container) {
+        // Удаляем сообщение о пустой структуре, если оно есть
+        if (container === structureContainer) {
+            const emptyState = container.querySelector('#empty-structure');
+            if (emptyState && emptyState.style.display !== 'none') {
+                emptyState.style.display = 'none';
+            }
+        }
+        
         const folderElement = document.importNode(folderTemplate.content, true);
         const folderItem = folderElement.querySelector('.folder-item');
         
         setupFolderEventHandlers(folderItem);
         
-        // Проверяем наличие пустого состояния и удаляем его
-        const emptyFolder = container.querySelector('.empty-folder');
-        if (emptyFolder) {
-            container.removeChild(emptyFolder);
+        // Проверяем наличие пустого состояния папки и удаляем его
+        if (container.querySelector('.empty-folder')) {
+            // Преобразуем коллекцию в массив для безопасного удаления
+            const emptyFolders = Array.from(container.querySelectorAll('.empty-folder'));
+            emptyFolders.forEach(emptyFolder => {
+                if (emptyFolder.parentNode === container) { // Дополнительная проверка
+                    container.removeChild(emptyFolder);
+                }
+            });
         }
         
         container.appendChild(folderItem);
-        checkEmptyStructure();
+        
+        // Обновляем глобальный статус структуры
+        if (container === structureContainer) {
+            checkEmptyStructure();
+        }
+        
         return folderItem;
     }
     
@@ -174,6 +200,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function addFolderWithData(container, folderData) {
         const folderItem = addFolder(container);
         folderItem.querySelector('.folder-name').value = folderData.name || '';
+        
+        // Обновляем заголовок папки
+        const folderName = folderData.name || '';
+        if (folderName) {
+            folderItem.querySelector('.folder-header h3').textContent = `Папка: ${folderName}`;
+        }
+        
         return folderItem;
     }
     
@@ -186,11 +219,20 @@ document.addEventListener('DOMContentLoaded', function() {
             parent.removeChild(folderItem);
             
             // Если после удаления папка пуста, добавляем сообщение о пустой папке
-            if (parent.children.length === 0 && parent.classList.contains('folder-items')) {
-                const emptyFolder = document.createElement('div');
-                emptyFolder.className = 'empty-folder';
-                emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
-                parent.appendChild(emptyFolder);
+            // Проверяем, есть ли в родительском контейнере какие-либо файлы или папки
+            const hasItems = Array.from(parent.children).some(child => 
+                child.classList && (child.classList.contains('folder-item') || child.classList.contains('file-item'))
+            );
+            
+            // Если нет элементов и это контейнер внутри папки, добавляем сообщение о пустой папке
+            if (!hasItems && parent.classList.contains('folder-items')) {
+                // Убедимся, что нет существующего сообщения о пустой папке
+                if (!parent.querySelector('.empty-folder')) {
+                    const emptyFolder = document.createElement('div');
+                    emptyFolder.className = 'empty-folder';
+                    emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
+                    parent.appendChild(emptyFolder);
+                }
             }
             
             checkEmptyStructure();
@@ -198,8 +240,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Кнопка сворачивания/разворачивания
         const toggleBtn = folderItem.querySelector('.toggle-folder-btn');
-        toggleBtn.addEventListener('click', function() {
-            folderItem.classList.toggle('folder-collapsed');
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Предотвращаем всплытие события
+            toggleFolderCollapse(folderItem);
+        });
+        
+        // Добавляем клик на весь заголовок для сворачивания/разворачивания
+        const folderHeader = folderItem.querySelector('.folder-header');
+        folderHeader.addEventListener('click', function(e) {
+            // Проверяем, что клик не был на кнопках
+            if (!e.target.closest('.item-actions button')) {
+                toggleFolderCollapse(folderItem);
+            }
         });
         
         // Кнопки перемещения
@@ -225,30 +277,95 @@ document.addEventListener('DOMContentLoaded', function() {
         const addFileInFolderBtn = folderItem.querySelector('.add-file-in-folder-btn');
         const folderItemsContainer = folderItem.querySelector('.folder-items');
         
-        addFolderInFolderBtn.addEventListener('click', function() {
-            addFolder(folderItemsContainer);
-        });
+        if (addFolderInFolderBtn) {
+            addFolderInFolderBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Добавление подпапки');
+                const newFolder = addFolder(folderItemsContainer);
+                // Разворачиваем родительскую папку, если она свёрнута
+                if (folderItem.classList.contains('folder-collapsed')) {
+                    folderItem.classList.remove('folder-collapsed');
+                }
+            });
+        }
         
-        addFileInFolderBtn.addEventListener('click', function() {
-            addFile(folderItemsContainer);
-        });
+        if (addFileInFolderBtn) {
+            addFileInFolderBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Добавление файла в папку');
+                const newFile = addFile(folderItemsContainer);
+                // Разворачиваем родительскую папку, если она свёрнута
+                if (folderItem.classList.contains('folder-collapsed')) {
+                    folderItem.classList.remove('folder-collapsed');
+                }
+            });
+        }
+        
+        // Обновление имени папки в заголовке при вводе
+        const folderNameInput = folderItem.querySelector('.folder-name');
+        const folderHeaderTitle = folderItem.querySelector('.folder-header h3');
+        
+        // Функция обновления заголовка
+        function updateFolderHeader() {
+            const folderName = folderNameInput.value.trim();
+            if (folderName) {
+                folderHeaderTitle.textContent = `Папка: ${folderName}`;
+            } else {
+                folderHeaderTitle.textContent = 'Папка';
+            }
+        }
+        
+        // Слушатель для обновления заголовка при вводе
+        folderNameInput.addEventListener('input', updateFolderHeader);
+        folderNameInput.addEventListener('change', updateFolderHeader);
+        
+        // Вызываем функцию сразу, чтобы установить начальное значение
+        updateFolderHeader();
+    }
+    
+    // Функция для сворачивания/разворачивания папки
+    function toggleFolderCollapse(folderItem) {
+        folderItem.classList.toggle('folder-collapsed');
     }
     
     // Функция добавления нового файла
     function addFile(container) {
+        // Удаляем сообщение о пустой структуре, если оно есть
+        if (container === structureContainer) {
+            const emptyState = container.querySelector('#empty-structure');
+            if (emptyState && emptyState.style.display !== 'none') {
+                emptyState.style.display = 'none';
+            }
+        }
+        
         const fileElement = document.importNode(fileTemplate.content, true);
         const fileItem = fileElement.querySelector('.file-item');
         
+        // Добавляем класс свёрнутого файла по умолчанию
+        fileItem.classList.add('file-collapsed');
+        
         setupFileEventHandlers(fileItem);
         
-        // Проверяем наличие пустого состояния и удаляем его
-        const emptyFolder = container.querySelector('.empty-folder');
-        if (emptyFolder) {
-            container.removeChild(emptyFolder);
+        // Проверяем наличие пустого состояния папки и удаляем его
+        if (container.querySelector('.empty-folder')) {
+            // Преобразуем коллекцию в массив для безопасного удаления
+            const emptyFolders = Array.from(container.querySelectorAll('.empty-folder'));
+            emptyFolders.forEach(emptyFolder => {
+                if (emptyFolder.parentNode === container) { // Дополнительная проверка
+                    container.removeChild(emptyFolder);
+                }
+            });
         }
         
         container.appendChild(fileItem);
-        checkEmptyStructure();
+        
+        // Обновляем глобальный статус структуры
+        if (container === structureContainer) {
+            checkEmptyStructure();
+        }
+        
         return fileItem;
     }
     
@@ -257,6 +374,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileItem = addFile(container);
         fileItem.querySelector('.file-name').value = fileData.file_name || '';
         fileItem.querySelector('.file-description').value = fileData.description || '';
+        
+        // Добавляем класс свёрнутого файла по умолчанию
+        fileItem.classList.add('file-collapsed');
         
         // Обработка пар ввод-вывод
         const ioPairsContainer = fileItem.querySelector('.io-pairs');
@@ -292,6 +412,9 @@ document.addEventListener('DOMContentLoaded', function() {
             addPair(ioPairsContainer);
         }
         
+        // Обновляем заголовок файла
+        updateFileHeaderInfo(fileItem);
+        
         return fileItem;
     }
     
@@ -302,8 +425,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         pairItem.innerHTML = `
             <div class="mock-header">
-                <span>Вариант ${index}</span>
-                <button type="button" class="remove-pair-btn btn-icon">✖</button>
+                <div class="mock-header-actions">
+                    <button type="button" class="remove-pair-btn btn-icon">✖</button>
+                </div>
             </div>
             <div class="mock-io-container">
                 <div class="mock-io-item">
@@ -325,7 +449,6 @@ document.addEventListener('DOMContentLoaded', function() {
         removeBtn.addEventListener('click', function() {
             if (container.querySelectorAll('.mock-pair').length <= 1) return;
             container.removeChild(pairItem);
-            updatePairNumbers(container);
         });
         
         // Валидация JSON в текстовых полях
@@ -356,15 +479,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция добавления новой пары
     function addPair(container) {
         const pairCount = container.querySelectorAll('.mock-pair').length + 1;
-        return addPairWithData(container, { input: {}, output: {} }, pairCount);
+        const pairItem = addPairWithData(container, { input: {}, output: {} }, pairCount);
+        
+        // Обновляем заголовок файла, если добавление пары было успешным
+        const fileItem = container.closest('.file-item');
+        if (fileItem) {
+            updateFileHeaderInfo(fileItem);
+        }
+        
+        return pairItem;
     }
     
     // Функция обновления нумерации вариантов
     function updatePairNumbers(container) {
-        const pairItems = container.querySelectorAll('.mock-pair');
-        pairItems.forEach((item, index) => {
-            item.querySelector('.mock-header span').textContent = `Вариант ${index + 1}`;
-        });
+        // Функция больше не требуется, так как нумерация удалена
     }
     
     // Функция валидации JSON
@@ -390,6 +518,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Функция обновления заголовка файла
+    function updateFileHeaderInfo(fileItem) {
+        const fileNameInput = fileItem.querySelector('.file-name');
+        const fileHeaderTitle = fileItem.querySelector('.file-header h3');
+        
+        const fileName = fileNameInput.value.trim();
+        
+        let headerText = 'Файл';
+        if (fileName) {
+            headerText = `Файл: ${fileName}`;
+        }
+        
+        fileHeaderTitle.textContent = headerText;
+    }
+    
     // Функция настройки обработчиков событий для файла
     function setupFileEventHandlers(fileItem) {
         // Кнопка удаления
@@ -398,12 +541,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const parent = fileItem.parentNode;
             parent.removeChild(fileItem);
             
-            // Если после удаления папка пуста, добавляем сообщение о пустой папке
-            if (parent.children.length === 0 && parent.classList.contains('folder-items')) {
-                const emptyFolder = document.createElement('div');
-                emptyFolder.className = 'empty-folder';
-                emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
-                parent.appendChild(emptyFolder);
+            // Проверяем, есть ли в родительском контейнере какие-либо файлы или папки
+            const hasItems = Array.from(parent.children).some(child => 
+                child.classList && (child.classList.contains('folder-item') || child.classList.contains('file-item'))
+            );
+            
+            // Если нет элементов и это контейнер внутри папки, добавляем сообщение о пустой папке
+            if (!hasItems && parent.classList.contains('folder-items')) {
+                // Убедимся, что нет существующего сообщения о пустой папке
+                if (!parent.querySelector('.empty-folder')) {
+                    const emptyFolder = document.createElement('div');
+                    emptyFolder.className = 'empty-folder';
+                    emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
+                    parent.appendChild(emptyFolder);
+                }
             }
             
             checkEmptyStructure();
@@ -429,12 +580,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Кнопка для сворачивания/разворачивания файла
+        const toggleBtn = fileItem.querySelector('.toggle-file-btn');
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Предотвращаем всплытие события
+            toggleFileCollapse(fileItem);
+        });
+        
+        // Добавляем клик на весь заголовок для сворачивания/разворачивания
+        const fileHeaderElement = fileItem.querySelector('.file-header');
+        fileHeaderElement.addEventListener('click', function(e) {
+            // Проверяем, что клик не был на кнопках
+            if (!e.target.closest('.item-actions button')) {
+                toggleFileCollapse(fileItem);
+            }
+        });
+        
         // Кнопка добавления новой пары
         const addPairBtn = fileItem.querySelector('.add-pair-btn');
         const ioPairsContainer = fileItem.querySelector('.io-pairs');
         
         addPairBtn.addEventListener('click', function() {
             addPair(ioPairsContainer);
+            updateFileHeaderInfo(fileItem);
         });
         
         // Подключение обработчиков для кнопок удаления пар
@@ -451,8 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 pairsContainer.removeChild(pairItem);
                 
-                // Обновляем нумерацию вариантов
-                updatePairNumbers(pairsContainer);
+                // Обновляем заголовок с новым количеством пар
+                updateFileHeaderInfo(fileItem);
             });
         });
         
@@ -462,6 +630,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 validateJson(this);
             });
         });
+        
+        // Обновление имени файла в заголовке при вводе
+        const fileNameInput = fileItem.querySelector('.file-name');
+        
+        // Слушатель для обновления заголовка при вводе
+        fileNameInput.addEventListener('input', function() {
+            updateFileHeaderInfo(fileItem);
+        });
+        fileNameInput.addEventListener('change', function() {
+            updateFileHeaderInfo(fileItem);
+        });
+        
+        // Вызываем функцию сразу, чтобы установить начальное значение
+        updateFileHeaderInfo(fileItem);
+    }
+    
+    // Функция для сворачивания/разворачивания файла
+    function toggleFileCollapse(fileItem) {
+        fileItem.classList.toggle('file-collapsed');
     }
     
     // Функция сбора структуры проекта
@@ -569,15 +756,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Проверка на заполненность всех обязательных полей
-        const emptyFileNames = document.querySelectorAll('.file-item .file-name:not([value])');
+        // Проверка на заполненность имен файлов (только если нужно)
+        const fileInputs = document.querySelectorAll('.file-item .file-name');
+        const emptyFileNames = Array.from(fileInputs).filter(input => !input.value.trim());
         if (emptyFileNames.length > 0) {
             showMessage('Укажите имена для всех файлов', 'error');
             emptyFileNames[0].focus();
             return;
         }
         
-        const emptyFolderNames = document.querySelectorAll('.folder-item .folder-name:not([value])');
+        // Проверка на заполненность имен папок (только если нужно)
+        const folderInputs = document.querySelectorAll('.folder-item .folder-name');
+        const emptyFolderNames = Array.from(folderInputs).filter(input => !input.value.trim());
         if (emptyFolderNames.length > 0) {
             showMessage('Укажите имена для всех папок', 'error');
             emptyFolderNames[0].focus();

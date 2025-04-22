@@ -4,30 +4,18 @@
       "name": "чсясяч",
       "structure": [
         {
-          "type": "file",
-          "file_name": "ыфвфыв",
-          "description": "вфыаываыв",
-          "input_mock": {
-            "example": "value"
-          },
-          "output_mock": {
-            "example": "value"
-          }
-        },
-        {
           "type": "folder",
-          "name": "уваываываыв",
+          "name": "фыв",
           "children": [
             {
               "type": "file",
-              "file_name": "",
-              "description": "фывафваыа",
-              "input_mock": {
-                "example": "value"
-              },
-              "output_mock": {
-                "example": "value"
-              }
+              "file_name": "фывф",
+              "description": ""
+            },
+            {
+              "type": "folder",
+              "name": "фыв",
+              "children": []
             }
           ]
         }
