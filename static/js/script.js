@@ -12,6 +12,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('status-message');
     const fileTemplate = document.getElementById('file-template');
     const folderTemplate = document.getElementById('folder-template');
+    const importJsonBtn = document.getElementById('import-json-btn');
+    const jsonFileInput = document.getElementById('json-file-input');
+    const exportJsonBtn = document.getElementById('export-json-btn');
+    const manualJsonBtn = document.getElementById('manual-json-btn');
+    const jsonModal = document.getElementById('json-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const jsonInput = document.getElementById('json-input');
+    const applyJsonBtn = document.getElementById('apply-json-btn');
+    
+    // Переменные для drag-and-drop
+    let draggedItem = null;
+    let dragTargetContainer = null;
     
     // Добавление обработчиков событий
     projectSelect.addEventListener('change', loadSelectedProject);
@@ -19,9 +31,108 @@ document.addEventListener('DOMContentLoaded', function() {
     addFolderBtn.addEventListener('click', () => addFolder(structureContainer));
     addFileBtn.addEventListener('click', () => addFile(structureContainer));
     saveProjectBtn.addEventListener('click', saveProject);
+    importJsonBtn.addEventListener('click', () => jsonFileInput.click());
+    jsonFileInput.addEventListener('change', handleJsonImport);
+    exportJsonBtn.addEventListener('click', exportProjectJson);
+    manualJsonBtn.addEventListener('click', openJsonModal);
+    closeModalBtn.addEventListener('click', closeJsonModal);
+    applyJsonBtn.addEventListener('click', applyManualJson);
+    
+    // Закрытие модального окна при клике вне содержимого
+    window.addEventListener('click', (e) => {
+        if (e.target === jsonModal) {
+            closeJsonModal();
+        }
+    });
+    
+    // Инициализация drag-and-drop функциональности
+    initDragAndDrop();
     
     // Загрузка списка проектов при загрузке страницы
     loadProjects();
+    
+    // Функция обработки импорта JSON файла
+    function handleJsonImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Проверка типа файла
+        if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+            showMessage('Выбранный файл не является JSON файлом', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+                
+                // Проверка валидности структуры
+                if (!jsonData) {
+                    throw new Error('Файл не содержит данных');
+                }
+                
+                // Очистка текущей структуры проекта
+                structureContainer.innerHTML = '';
+                
+                // Если есть название проекта, устанавливаем его
+                if (jsonData.name) {
+                    projectNameInput.value = jsonData.name;
+                }
+                
+                // Если есть ID проекта, устанавливаем его
+                if (jsonData.id) {
+                    projectIdInput.value = jsonData.id;
+                } else {
+                    // Сбрасываем ID для создания нового проекта
+                    projectIdInput.value = '';
+                }
+                
+                // Загрузка структуры из разных форматов
+                if (jsonData.structure && Array.isArray(jsonData.structure)) {
+                    // Новый формат с массивом структуры
+                    loadProjectStructure(jsonData.structure, structureContainer);
+                } else if (jsonData.files && Array.isArray(jsonData.files)) {
+                    // Старый формат с массивом файлов
+                    jsonData.files.forEach(fileData => {
+                        addFileWithData(structureContainer, fileData);
+                    });
+                } else if (Array.isArray(jsonData)) {
+                    // Простой массив элементов структуры
+                    loadProjectStructure(jsonData, structureContainer);
+                } else {
+                    throw new Error('Неподдерживаемый формат JSON файла');
+                }
+                
+                // Проверка пустой структуры
+                checkEmptyStructure();
+                
+                // Выбираем опцию "Новый проект" в списке
+                projectSelect.value = 'new';
+                
+                showMessage('Структура проекта успешно импортирована', 'success');
+                
+                // Сбрасываем выбор файла, чтобы можно было загрузить тот же файл повторно
+                jsonFileInput.value = '';
+                
+            } catch (error) {
+                showMessage('Ошибка при импорте JSON: ' + error.message, 'error');
+                console.error('Ошибка импорта JSON:', error);
+                // Сбрасываем выбор файла
+                jsonFileInput.value = '';
+            }
+        };
+        
+        reader.onerror = function() {
+            showMessage('Ошибка чтения файла', 'error');
+            // Сбрасываем выбор файла
+            jsonFileInput.value = '';
+        };
+        
+        // Чтение файла как текст
+        reader.readAsText(file);
+    }
     
     // Проверка на пустую структуру
     function checkEmptyStructure() {
@@ -39,6 +150,291 @@ document.addEventListener('DOMContentLoaded', function() {
             // В структуре есть реальные элементы, скрываем сообщение
             emptyStructure.style.display = 'none';
         }
+    }
+    
+    // Функция инициализации drag-and-drop
+    function initDragAndDrop() {
+        // Делегирование событий на контейнер структуры
+        structureContainer.addEventListener('dragstart', handleDragStart);
+        structureContainer.addEventListener('dragover', handleDragOver);
+        structureContainer.addEventListener('dragleave', handleDragLeave);
+        structureContainer.addEventListener('drop', handleDrop);
+        structureContainer.addEventListener('dragend', handleDragEnd);
+        
+        // Также обрабатываем события внутри папок
+        document.addEventListener('dragstart', function(e) {
+            if (e.target.classList.contains('file-item') || e.target.classList.contains('folder-item')) {
+                handleDragStart(e);
+            }
+        }, false);
+        
+        document.addEventListener('dragover', function(e) {
+            if (e.target.closest('.folder-items') || e.target.closest('.structure-container') || 
+                e.target.classList.contains('file-item') || e.target.classList.contains('folder-item')) {
+                handleDragOver(e);
+            }
+        }, false);
+        
+        document.addEventListener('dragleave', function(e) {
+            if (e.target.closest('.folder-items') || e.target.closest('.structure-container') ||
+                e.target.classList.contains('file-item') || e.target.classList.contains('folder-item')) {
+                handleDragLeave(e);
+            }
+        }, false);
+        
+        document.addEventListener('drop', function(e) {
+            if (e.target.closest('.folder-items') || e.target.closest('.structure-container') ||
+                e.target.classList.contains('file-item') || e.target.classList.contains('folder-item')) {
+                handleDrop(e);
+            }
+        }, false);
+        
+        document.addEventListener('dragend', handleDragEnd, false);
+    }
+    
+    // Обработчик начала перетаскивания
+    function handleDragStart(e) {
+        // Проверяем, что перетаскивается файл или папка
+        if (e.target.classList.contains('file-item') || e.target.classList.contains('folder-item')) {
+            // Если щелчок был на кнопке или внутри формы, не начинаем перетаскивание
+            if (e.target.closest('.item-actions button') || e.target.closest('input') || e.target.closest('textarea')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            
+            draggedItem = e.target;
+            
+            // Создаем локальную копию ссылки на элемент
+            const dragElement = draggedItem;
+            
+            // Задержка для добавления класса, чтобы стили начали применяться после начала перетаскивания
+            requestAnimationFrame(() => {
+                // Проверяем, что элемент все еще существует и не null
+                if (dragElement && dragElement.classList) {
+                    dragElement.classList.add('dragging');
+                }
+            });
+            
+            // Сохраняем информацию о перетаскиваемом элементе
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.outerHTML);
+            
+            // Добавляем полупрозрачный эффект при перетаскивании
+            draggedItem.style.opacity = '0.7';
+        }
+    }
+    
+    // Обработчик перетаскивания над целью
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault(); // Позволяет бросить элемент
+        }
+        
+        e.dataTransfer.dropEffect = 'move';
+        
+        // Простая оптимизация: обрабатываем событие только каждые 30мс для лучшей производительности
+        if (!window.dragOverThrottled) {
+            window.dragOverThrottled = true;
+            
+            // Очищаем все индикаторы перетаскивания
+            clearDragIndicators();
+            
+            // Если перетаскиваемся над контейнером папки
+            if (e.target.closest('.folder-items')) {
+                const folderItems = e.target.closest('.folder-items');
+                folderItems.classList.add('drag-over');
+                dragTargetContainer = folderItems;
+                return false;
+            }
+            
+            // Если перетаскиваемся над файлом или папкой
+            const targetItem = e.target.closest('.file-item, .folder-item');
+            
+            if (targetItem && draggedItem && targetItem !== draggedItem) {
+                // Определяем, вставить до или после целевого элемента
+                const rect = targetItem.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                if (y < rect.height / 2) {
+                    // Перетаскивание над верхней половиной элемента
+                    targetItem.classList.add('drag-over-top');
+                } else {
+                    // Перетаскивание над нижней половиной элемента
+                    targetItem.classList.add('drag-over-bottom');
+                }
+            }
+            
+            // Сбрасываем флаг throttle через короткий промежуток времени
+            setTimeout(() => {
+                window.dragOverThrottled = false;
+            }, 30); // 30мс оптимально для плавного отображения
+        }
+        
+        return false;
+    }
+    
+    // Обработчик ухода из зоны перетаскивания
+    function handleDragLeave(e) {
+        // Улучшенная обработка для предотвращения мерцания
+        // Проверяем, что мышь действительно покинула элемент, а не перешла на дочерний элемент
+        const rect = e.target.getBoundingClientRect();
+        const isLeaving = 
+            e.clientX <= rect.left || 
+            e.clientX >= rect.right || 
+            e.clientY <= rect.top || 
+            e.clientY >= rect.bottom;
+
+        if (isLeaving) {
+            // Удаляем индикаторы с текущего элемента
+            if (e.target.classList.contains('drag-over') || 
+                e.target.classList.contains('drag-over-top') || 
+                e.target.classList.contains('drag-over-bottom')) {
+                e.target.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+            }
+            
+            if (e.target.closest('.folder-items')) {
+                const folderItems = e.target.closest('.folder-items');
+                
+                // Проверяем, что курсор действительно вышел за пределы папки
+                const folderRect = folderItems.getBoundingClientRect();
+                if (e.clientX <= folderRect.left || 
+                    e.clientX >= folderRect.right || 
+                    e.clientY <= folderRect.top || 
+                    e.clientY >= folderRect.bottom) {
+                    folderItems.classList.remove('drag-over');
+                }
+            }
+        }
+    }
+    
+    // Упрощенная функция обработки бросания элемента
+    function handleDrop(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        
+        // Если бросание не на перетаскиваемый элемент и draggedItem существует
+        if (draggedItem && draggedItem !== e.target) {
+            // Восстанавливаем прозрачность
+            draggedItem.style.opacity = '1';
+            
+            // Если бросаем в контейнер папки
+            if (e.target.closest('.folder-items')) {
+                const folderItems = e.target.closest('.folder-items');
+                
+                // Удаляем сообщение о пустой папке, если оно есть
+                const emptyFolders = folderItems.querySelectorAll('.empty-folder');
+                emptyFolders.forEach(emptyFolder => {
+                    if (emptyFolder.parentNode === folderItems) {
+                        folderItems.removeChild(emptyFolder);
+                    }
+                });
+                
+                // Перемещаем элемент в конец папки
+                folderItems.appendChild(draggedItem);
+                
+                // Если папка была свернута, разворачиваем ее
+                const parentFolder = folderItems.closest('.folder-item');
+                if (parentFolder && parentFolder.classList.contains('folder-collapsed')) {
+                    parentFolder.classList.remove('folder-collapsed');
+                }
+                
+                // Воспроизводим звук перемещения
+                playDropSound();
+            } else {
+                // Если бросаем на файл или папку
+                const targetItem = e.target.closest('.file-item, .folder-item');
+                
+                if (targetItem && targetItem !== draggedItem) {
+                    const parent = targetItem.parentNode;
+                    
+                    if (targetItem.classList.contains('drag-over-top')) {
+                        // Вставляем перед элементом
+                        parent.insertBefore(draggedItem, targetItem);
+                    } else if (targetItem.classList.contains('drag-over-bottom')) {
+                        // Вставляем после элемента
+                        parent.insertBefore(draggedItem, targetItem.nextSibling);
+                    }
+                    
+                    // Воспроизводим звук перемещения
+                    playDropSound();
+                }
+            }
+            
+            // Обновляем состояние пустых папок
+            setTimeout(updateEmptyFolderState, 100);
+        }
+        
+        // Очищаем все индикаторы перетаскивания
+        clearDragIndicators();
+        
+        return false;
+    }
+    
+    // Функция воспроизведения звука перемещения
+    function playDropSound() {
+        // Создаем временный HTML5 аудио элемент
+        const audio = new Audio();
+        audio.volume = 0.2; // Уменьшаем громкость
+        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAABElRJVDIAAABpAAAAAAAAAExBTUUzLjEwMABUUkNLAAAAAgAAAFRZRVIAAAAFAAAAMjAyMwBUQ09OAAAADgAAAFNvdW5kIEVmZmVjdABUUEUxAAAADAAAAFN3aXNoIHNvdW5kAP/7kGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEluZm8AAAAPAAAABQAAAyAAAQMGCg0QExYZHB8iJSgrLjE0Nzo9QENGSU1QU1ZZXGBjZmltcHN2eX2AhImMj5KVmJueoaSoq66xtLe6vcDDxsjLztHU19rd4OPm6ezt8PP29/n8//8AAAAALQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//vQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/70GQAg/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+9BkAA/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==';
+        
+        // Воспроизводим звук
+        audio.play().catch(e => {
+            // Игнорируем ошибки воспроизведения, если браузер не поддерживает автовоспроизведение
+            console.log("Sound playback was prevented: ", e);
+        });
+    }
+    
+    // Обработчик окончания перетаскивания
+    function handleDragEnd(e) {
+        // Восстанавливаем прозрачность
+        if (draggedItem) {
+            draggedItem.style.opacity = '1';
+            
+            // Плавно удаляем класс dragging
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        }
+        
+        // Очищаем все индикаторы перетаскивания
+        clearDragIndicators();
+        
+        // Сбрасываем целевой контейнер
+        dragTargetContainer = null;
+    }
+    
+    // Очистка всех индикаторов перетаскивания
+    function clearDragIndicators() {
+        // Удаляем классы со всех элементов
+        document.querySelectorAll('.drag-over, .drag-over-top, .drag-over-bottom').forEach(el => {
+            el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        });
+    }
+    
+    // Обновление состояния пустых папок
+    function updateEmptyFolderState() {
+        // Проверяем все контейнеры папок
+        document.querySelectorAll('.folder-items').forEach(folderItems => {
+            // Ищем реальные элементы структуры (папки и файлы), исключая служебные
+            const hasItems = Array.from(folderItems.children).some(child => 
+                child.classList && (child.classList.contains('folder-item') || child.classList.contains('file-item'))
+            );
+            
+            // Если нет элементов и нет сообщения о пустой папке, добавляем его
+            if (!hasItems && !folderItems.querySelector('.empty-folder')) {
+                const emptyFolder = document.createElement('div');
+                emptyFolder.className = 'empty-folder';
+                emptyFolder.textContent = 'Эта папка пуста. Добавьте файлы или подпапки.';
+                folderItems.appendChild(emptyFolder);
+            }
+        });
+        
+        // Также проверяем основной контейнер
+        checkEmptyStructure();
     }
     
     // Функция загрузки списка проектов
@@ -251,24 +647,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Проверяем, что клик не был на кнопках
             if (!e.target.closest('.item-actions button')) {
                 toggleFolderCollapse(folderItem);
-            }
-        });
-        
-        // Кнопки перемещения
-        const moveUpBtn = folderItem.querySelector('.move-up-btn');
-        const moveDownBtn = folderItem.querySelector('.move-down-btn');
-        
-        moveUpBtn.addEventListener('click', function() {
-            const prev = folderItem.previousElementSibling;
-            if (prev && !prev.classList.contains('empty-folder')) {
-                folderItem.parentNode.insertBefore(folderItem, prev);
-            }
-        });
-        
-        moveDownBtn.addEventListener('click', function() {
-            const next = folderItem.nextElementSibling;
-            if (next) {
-                folderItem.parentNode.insertBefore(next, folderItem);
             }
         });
         
@@ -560,26 +938,6 @@ document.addEventListener('DOMContentLoaded', function() {
             checkEmptyStructure();
         });
         
-        // Кнопки перемещения вверх/вниз
-        const moveUpBtn = fileItem.querySelector('.move-up-btn');
-        const moveDownBtn = fileItem.querySelector('.move-down-btn');
-        
-        moveUpBtn.addEventListener('click', function() {
-            const parent = fileItem.parentNode;
-            const prev = fileItem.previousElementSibling;
-            if (prev && !prev.classList.contains('empty-folder')) {
-                parent.insertBefore(fileItem, prev);
-            }
-        });
-        
-        moveDownBtn.addEventListener('click', function() {
-            const parent = fileItem.parentNode;
-            const next = fileItem.nextElementSibling;
-            if (next) {
-                parent.insertBefore(next, fileItem);
-            }
-        });
-        
         // Кнопка для сворачивания/разворачивания файла
         const toggleBtn = fileItem.querySelector('.toggle-file-btn');
         toggleBtn.addEventListener('click', function(e) {
@@ -818,14 +1176,63 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Функция отображения статусного сообщения
-    function showMessage(message, type) {
+    // Функция экспорта проекта в JSON файл
+    function exportProjectJson() {
+        const projectName = projectNameInput.value.trim();
+        
+        if (!projectName) {
+            showMessage('Укажите название проекта перед экспортом', 'error');
+            projectNameInput.focus();
+            return;
+        }
+        
+        // Проверка на валидность всех JSON полей
+        const invalidJsonFields = document.querySelectorAll('textarea.file-input-mock.error, textarea.file-output-mock.error');
+        if (invalidJsonFields.length > 0) {
+            showMessage('Проверьте корректность формата JSON во всех полях перед экспортом', 'error');
+            invalidJsonFields[0].focus();
+            return;
+        }
+        
+        // Собираем структуру проекта
+        const projectStructure = collectProjectStructure(structureContainer);
+        
+        const projectData = {
+            name: projectName,
+            structure: projectStructure
+        };
+        
+        // Добавляем ID проекта, если он существует
+        const projectId = projectIdInput.value.trim();
+        if (projectId) {
+            projectData.id = projectId;
+        }
+        
+        // Создаем Blob с данными JSON
+        const jsonData = JSON.stringify(projectData, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        
+        // Создаем ссылку для скачивания
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = `${projectName.replace(/\s+/g, '_')}_project.json`;
+        
+        // Добавляем ссылку в DOM, нажимаем на неё и удаляем
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        showMessage('Проект успешно экспортирован в JSON файл', 'success');
+    }
+    
+    // Усовершенствованная функция отображения сообщений
+    function showMessage(message, type, duration = 5000) {
         statusMessage.textContent = message;
         statusMessage.className = type;
         statusMessage.classList.add('active');
         
-        // Автоматическое скрытие сообщения через 5 секунд
-        setTimeout(() => {
+        // Автоматическое скрытие сообщения
+        const timeout = setTimeout(() => {
             statusMessage.classList.remove('active');
             
             // Очистка сообщения после анимации
@@ -833,7 +1240,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusMessage.textContent = '';
                 statusMessage.className = '';
             }, 400);
-        }, 5000);
+        }, duration);
+        
+        // Сохраняем timeout ID в элементе, чтобы иметь возможность отменить его
+        statusMessage.dataset.timeoutId = timeout;
     }
     
     // Проверка на пустую структуру при загрузке
@@ -842,5 +1252,102 @@ document.addEventListener('DOMContentLoaded', function() {
     // Добавление начальной папки или файла для нового проекта
     if (projectSelect.value === 'new' && structureContainer.children.length === 0) {
         emptyStructure.style.display = 'block';
+    }
+    
+    // Функции для работы с модальным окном ввода JSON
+    function openJsonModal() {
+        jsonModal.classList.add('active');
+        // Предзаполним поле ввода актуальной структурой проекта, если она есть
+        if (projectNameInput.value.trim()) {
+            const projectStructure = collectProjectStructure(structureContainer);
+            const projectData = {
+                name: projectNameInput.value.trim(),
+                structure: projectStructure
+            };
+            
+            // Добавляем ID проекта, если он существует
+            const projectId = projectIdInput.value.trim();
+            if (projectId) {
+                projectData.id = projectId;
+            }
+            
+            jsonInput.value = JSON.stringify(projectData, null, 2);
+        } else {
+            jsonInput.value = '{\n  "name": "Название проекта",\n  "structure": [\n    \n  ]\n}';
+        }
+        
+        // Установка фокуса на текстовое поле с небольшой задержкой
+        setTimeout(() => {
+            jsonInput.focus();
+        }, 300);
+    }
+    
+    function closeJsonModal() {
+        jsonModal.classList.remove('active');
+    }
+    
+    function applyManualJson() {
+        const jsonText = jsonInput.value.trim();
+        
+        if (!jsonText) {
+            showMessage('Введите JSON структуру', 'error');
+            return;
+        }
+        
+        try {
+            const jsonData = JSON.parse(jsonText);
+            
+            // Проверка валидности структуры
+            if (!jsonData) {
+                throw new Error('Данные не содержат структуры');
+            }
+            
+            // Очистка текущей структуры проекта
+            structureContainer.innerHTML = '';
+            
+            // Если есть название проекта, устанавливаем его
+            if (jsonData.name) {
+                projectNameInput.value = jsonData.name;
+            }
+            
+            // Если есть ID проекта, устанавливаем его
+            if (jsonData.id) {
+                projectIdInput.value = jsonData.id;
+            } else {
+                // Сбрасываем ID для создания нового проекта
+                projectIdInput.value = '';
+            }
+            
+            // Загрузка структуры из разных форматов
+            if (jsonData.structure && Array.isArray(jsonData.structure)) {
+                // Новый формат с массивом структуры
+                loadProjectStructure(jsonData.structure, structureContainer);
+            } else if (jsonData.files && Array.isArray(jsonData.files)) {
+                // Старый формат с массивом файлов
+                jsonData.files.forEach(fileData => {
+                    addFileWithData(structureContainer, fileData);
+                });
+            } else if (Array.isArray(jsonData)) {
+                // Простой массив элементов структуры
+                loadProjectStructure(jsonData, structureContainer);
+            } else {
+                throw new Error('Неподдерживаемый формат JSON');
+            }
+            
+            // Проверка пустой структуры
+            checkEmptyStructure();
+            
+            // Выбираем опцию "Новый проект" в списке
+            projectSelect.value = 'new';
+            
+            showMessage('Структура проекта успешно импортирована', 'success');
+            
+            // Закрываем модальное окно
+            closeJsonModal();
+            
+        } catch (error) {
+            showMessage('Ошибка в формате JSON: ' + error.message, 'error');
+            console.error('Ошибка обработки JSON:', error);
+        }
     }
 }); 

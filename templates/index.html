@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Создание структуры проекта</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Редактор структуры проекта</h1>
-            <p class="app-description">Создавайте, организуйте и сохраняйте структуру вашего проекта с файлами, папками и документацией</p>
+            <div class="header-content">
+                <h1>Редактор структуры проекта</h1>
+                <p class="app-description">Создавайте, организуйте и сохраняйте структуру вашего проекта с файлами, папками и документацией</p>
+            </div>
+            <div class="header-pattern"></div>
         </header>
         
         <div class="main-content">
@@ -21,7 +25,31 @@
                         <option value="new">Новый проект</option>
                         <!-- Здесь будут добавлены существующие проекты -->
                     </select>
-                    <button id="delete-project-btn">Удалить проект</button>
+                    <button id="import-json-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" fill="currentColor"/>
+                        </svg>
+                        Импорт JSON
+                    </button>
+                    <button id="export-json-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11z" fill="currentColor"/>
+                        </svg>
+                        Экспорт JSON
+                    </button>
+                    <button id="manual-json-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 11H4V8H20V11M4 18V15H20V18H4Z" fill="currentColor"/>
+                        </svg>
+                        Ввести JSON
+                    </button>
+                    <button id="delete-project-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19ZM8 9H16V19H8V9ZM15.5 4L14.5 3H9.5L8.5 4H5V6H19V4H15.5Z" fill="currentColor"/>
+                        </svg>
+                        Удалить проект
+                    </button>
+                    <input type="file" id="json-file-input" accept=".json" style="display: none;" />
                 </div>
             </div>
             
@@ -38,8 +66,8 @@
                 
                 <div id="structure-container" class="structure-container">
                     <div class="empty-state" id="empty-structure" style="display: none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z" />
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6ZM20 18H4V8H20V18Z" fill="currentColor"/>
                         </svg>
                         <p>Эта структура пуста.<br>Добавьте файлы или папки, чтобы начать.</p>
                     </div>
@@ -48,14 +76,14 @@
                 
                 <div class="add-buttons">
                     <button id="add-folder-btn">
-                        <svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10M15,9H12V12H9V15H12V18H15V15H18V12H15V9Z" />
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6ZM19 11H16V8H14V11H11V13H14V16H16V13H19V11Z" fill="currentColor"/>
                         </svg>
                         Добавить папку
                     </button>
                     <button id="add-file-btn">
-                        <svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M15,13H9V11H15V13M15,17H9V15H15V17Z" />
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM15 11H9V13H15V11ZM15 15H9V17H15V15Z" fill="currentColor"/>
                         </svg>
                         Добавить файл
                     </button>
@@ -63,8 +91,8 @@
                 
                 <div class="actions">
                     <button id="save-project-btn">
-                        <svg style="width:20px;height:20px;margin-right:8px" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" />
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3ZM19 19H5V5H16.17L19 7.83V19ZM12 12C10.34 12 9 13.34 9 15C9 16.66 10.34 18 12 18C13.66 18 15 16.66 15 15C15 13.34 13.66 12 12 12ZM7 9H15V7H7V9Z" fill="currentColor"/>
                         </svg>
                         Сохранить структуру
                     </button>
@@ -77,13 +105,11 @@
     
     <!-- Шаблон для добавления файла -->
     <template id="file-template">
-        <div class="file-item" data-type="file">
+        <div class="file-item" data-type="file" draggable="true">
             <div class="file-header">
                 <h3>Файл</h3>
                 <div class="item-actions">
                     <button class="toggle-file-btn btn-icon">▼</button>
-                    <button class="move-up-btn btn-icon">▲</button>
-                    <button class="move-down-btn btn-icon">▼</button>
                     <button class="remove-item-btn btn-icon">✖</button>
                 </div>
             </div>
@@ -121,7 +147,12 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="add-pair-btn">+ Добавить пару "вход-выход"</button>
+                    <button type="button" class="add-pair-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
+                        </svg>
+                        Добавить пару "вход-выход"
+                    </button>
                 </div>
             </div>
         </div>
@@ -129,37 +160,35 @@
     
     <!-- Шаблон для добавления папки -->
     <template id="folder-template">
-        <div class="folder-item" data-type="folder">
+        <div class="folder-item" data-type="folder" draggable="true">
             <div class="folder-header">
                 <h3>Папка</h3>
                 <div class="item-actions">
                     <button class="toggle-folder-btn btn-icon">▼</button>
-                    <button class="move-up-btn btn-icon">▲</button>
-                    <button class="move-down-btn btn-icon">▼</button>
                     <button class="remove-item-btn btn-icon">✖</button>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label>Имя папки:</label>
-                <input type="text" class="folder-name" placeholder="Введите имя папки">
-            </div>
-            
             <div class="folder-content">
+                <div class="form-group">
+                    <label>Имя папки:</label>
+                    <input type="text" class="folder-name" placeholder="Введите имя папки">
+                </div>
+                
                 <div class="folder-items">
                     <div class="empty-folder">Эта папка пуста. Добавьте файлы или подпапки.</div>
                 </div>
                 
                 <div class="folder-actions">
                     <button class="add-folder-in-folder-btn">
-                        <svg style="width:16px;height:16px;margin-right:6px" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10M15,9H12V12H9V15H12V18H15V15H18V12H15V9Z" />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6ZM19 11H16V8H14V11H11V13H14V16H16V13H19V11Z" fill="currentColor"/>
                         </svg>
                         Добавить подпапку
                     </button>
                     <button class="add-file-in-folder-btn">
-                        <svg style="width:16px;height:16px;margin-right:6px" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M15,13H9V11H15V13M15,17H9V15H15V17Z" />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM15 11H9V13H15V11ZM15 15H9V17H15V15Z" fill="currentColor"/>
                         </svg>
                         Добавить файл
                     </button>
@@ -170,4 +199,21 @@
     
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
-</html> 
+</html>
+
+<!-- Модальное окно для ручного ввода JSON -->
+<div id="json-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Ввод JSON-структуры</h3>
+            <button id="close-modal-btn" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-description">Введите структуру проекта в формате JSON:</p>
+            <textarea id="json-input" placeholder='{ "name": "Название проекта", "structure": [ ... ] }'></textarea>
+        </div>
+        <div class="modal-footer">
+            <button id="apply-json-btn">Применить</button>
+        </div>
+    </div>
+</div> 
