@@ -6,6 +6,7 @@ import uuid
 from models import User, Project, db
 from forms import LoginForm, RegistrationForm
 from werkzeug.security import generate_password_hash, check_password_hash
+from ai_service import AIProjectGenerator
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Замените на случайный секретный ключ
@@ -30,6 +31,9 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
+# Инициализация AI генератора
+ai_project_generator = AIProjectGenerator()
+
 DATA_FILE = 'data.json'
 
 # Инициализация файла данных, если он не существует
@@ -53,6 +57,51 @@ def save_data(data):
 @login_required
 def index():
     return render_template('index.html')
+
+@app.route('/ai-generator')
+@login_required
+def ai_generator():
+    return render_template('ai_generator.html')
+
+@app.route('/generate-project', methods=['POST'])
+@login_required
+def generate_project():
+    try:
+        if not request.is_json:
+            print("Ошибка: Запрос не содержит JSON")
+            return jsonify({"error": "Запрос должен быть в формате JSON"}), 400
+            
+        data = request.get_json()
+        if data is None:
+            print("Ошибка: Не удалось получить JSON из запроса")
+            return jsonify({"error": "Не удалось получить JSON из запроса"}), 400
+            
+        description = data.get('description')
+        
+        if not description:
+            print("Ошибка: Отсутствует описание проекта")
+            return jsonify({"error": "Описание проекта не может быть пустым"}), 400
+        
+        print(f"Получен запрос на генерацию проекта: {description[:100]}...")
+        
+        # Генерация структуры проекта с помощью нейросети
+        project_data = ai_project_generator.generate_project_structure(description)
+        
+        if isinstance(project_data, dict) and 'error' in project_data:
+            print(f"Ошибка генерации: {project_data['error']}")
+            error_message = project_data['error']
+            if 'details' in project_data:
+                print(f"Детали ошибки: {project_data['details']}")
+            return jsonify({"error": error_message}), 500
+            
+        print(f"Успешно создана структура проекта: {project_data['name']}")
+        return jsonify(project_data)
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Необработанное исключение в generate_project: {str(e)}")
+        print(f"Трассировка:\n{error_trace}")
+        return jsonify({"error": str(e), "trace": error_trace}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

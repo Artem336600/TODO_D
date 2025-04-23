@@ -1,5 +1,9 @@
-flask==2.3.2
+flask==2.3.3
 flask-login==0.6.2
-flask-sqlalchemy==3.0.5
+flask-sqlalchemy==3.1.1
+flask-wtf==1.2.1
 werkzeug==2.3.7
-email-validator==2.0.1 
+wtforms==3.0.1
+sqlalchemy==2.0.21
+email-validator==2.0.0
+openai==1.6.1 
