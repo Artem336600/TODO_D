@@ -48,8 +48,13 @@ with app.app_context():
 
 # Получаем API ключ для OpenAI из переменных окружения
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-# Инициализация AI генератора
-ai_project_generator = AIProjectGenerator(api_key=OPENAI_API_KEY)
+# Инициализация AI генератора с обработкой возможных ошибок
+try:
+    ai_project_generator = AIProjectGenerator(api_key=OPENAI_API_KEY)
+    print("AI генератор инициализирован успешно")
+except Exception as e:
+    print(f"Ошибка при инициализации AI генератора: {e}")
+    ai_project_generator = None
 
 DATA_FILE = 'data.json'
 
@@ -101,8 +106,36 @@ def generate_project():
         
         print(f"Получен запрос на генерацию проекта: {description[:100]}...")
         
-        # Генерация структуры проекта с помощью нейросети
-        project_data = ai_project_generator.generate_project_structure(description)
+        # Проверка, инициализирован ли AI генератор
+        if ai_project_generator is None:
+            print("AI генератор не инициализирован, возвращаем базовый шаблон")
+            # Базовый шаблон проекта
+            project_data = {
+                "name": f"Проект: {description[:30]}...",
+                "structure": [
+                    {
+                        "type": "folder",
+                        "name": "src",
+                        "children": [
+                            {
+                                "type": "file",
+                                "file_name": "main.py",
+                                "description": "Основной файл приложения",
+                                "io_pairs": []
+                            }
+                        ]
+                    },
+                    {
+                        "type": "file",
+                        "file_name": "README.md",
+                        "description": "Документация проекта",
+                        "io_pairs": []
+                    }
+                ]
+            }
+        else:
+            # Генерация структуры проекта с помощью нейросети
+            project_data = ai_project_generator.generate_project_structure(description)
         
         if isinstance(project_data, dict) and 'error' in project_data:
             print(f"Ошибка генерации: {project_data['error']}")

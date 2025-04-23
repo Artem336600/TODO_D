@@ -7,8 +7,14 @@ import os
 class AIProjectGenerator:
     def __init__(self, api_key=None):
         # Получаем API ключ из переданного параметра или из переменных окружения
-        api_key = api_key or os.environ.get('OPENAI_API_KEY', "sk-abc70a4d8ead416da1f0789918533921")
-        self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+        self.api_key = api_key or os.environ.get('OPENAI_API_KEY', "sk-abc70a4d8ead416da1f0789918533921")
+        # Упрощенная инициализация клиента
+        try:
+            self.client = OpenAI(api_key=self.api_key)
+            print("OpenAI клиент инициализирован успешно")
+        except Exception as e:
+            print(f"Ошибка при инициализации OpenAI клиента: {e}")
+            self.client = None
         
     def generate_project_structure(self, prompt):
         """
@@ -21,6 +27,11 @@ class AIProjectGenerator:
             dict: Структура проекта в формате JSON
         """
         try:
+            # Проверяем, успешно ли инициализирован клиент
+            if self.client is None:
+                print("OpenAI клиент не инициализирован, используем заглушку")
+                return self._get_sample_project(prompt)
+                
             system_message = """
             Ты - ассистент, который помогает создавать структуру проектов. 
             Твоя задача - создать JSON-объект с подробной структурой проекта на основе запроса пользователя.
@@ -75,18 +86,18 @@ class AIProjectGenerator:
             Убедись, что структура соответствует формату JSON, описанному в инструкции системы.
             """
             
-            print(f"Отправка запроса к DeepSeek API с промптом: {prompt[:50]}...")
+            print(f"Отправка запроса к API с промптом: {prompt[:50]}...")
             
             try:
+                # Используем стандартную модель OpenAI
                 response = self.client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": enhanced_prompt}
                     ],
                     temperature=0.7,
-                    max_tokens=3000,
-                    stream=False
+                    max_tokens=2000
                 )
                 
                 result = response.choices[0].message.content
@@ -108,65 +119,67 @@ class AIProjectGenerator:
                     else:
                         raise ValueError(f"Ответ не содержит валидный JSON: {result}")
             except Exception as api_error:
-                print(f"Ошибка при обращении к DeepSeek API: {str(api_error)}")
+                print(f"Ошибка при обращении к API: {str(api_error)}")
                 print("Используем заглушку в качестве запасного варианта")
-                
-                # Заглушка - пример структуры проекта
-                sample_project = {
-                    "name": f"Проект: {prompt[:30]}...",
-                    "structure": [
+                return self._get_sample_project(prompt)
+            
+        except Exception as e:
+            error_details = traceback.format_exc()
+            print(f"Ошибка при генерации структуры проекта: {str(e)}\n{error_details}")
+            return {"error": str(e), "details": error_details}
+    
+    def _get_sample_project(self, prompt):
+        """Возвращает пример структуры проекта"""
+        sample_project = {
+            "name": f"Проект: {prompt[:30]}...",
+            "structure": [
+                {
+                    "type": "folder",
+                    "name": "src",
+                    "children": [
                         {
-                            "type": "folder",
-                            "name": "src",
-                            "children": [
+                            "type": "file",
+                            "file_name": "main.py",
+                            "description": "Основной файл приложения",
+                            "io_pairs": [
                                 {
-                                    "type": "file",
-                                    "file_name": "main.py",
-                                    "description": "Основной файл приложения",
-                                    "io_pairs": [
-                                        {
-                                            "input": {"command": "start"},
-                                            "output": {"status": "running"}
-                                        }
-                                    ]
-                                },
-                                {
-                                    "type": "file",
-                                    "file_name": "utils.py",
-                                    "description": "Вспомогательные функции",
-                                    "io_pairs": [
-                                        {
-                                            "input": {"data": "example"},
-                                            "output": {"processed": "result"}
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "type": "folder",
-                            "name": "tests",
-                            "children": [
-                                {
-                                    "type": "file",
-                                    "file_name": "test_main.py",
-                                    "description": "Тесты для основного модуля",
-                                    "io_pairs": []
+                                    "input": {"command": "start"},
+                                    "output": {"status": "running"}
                                 }
                             ]
                         },
                         {
                             "type": "file",
-                            "file_name": "README.md",
-                            "description": "Документация проекта",
+                            "file_name": "utils.py",
+                            "description": "Вспомогательные функции",
+                            "io_pairs": [
+                                {
+                                    "input": {"data": "example"},
+                                    "output": {"processed": "result"}
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "folder",
+                    "name": "tests",
+                    "children": [
+                        {
+                            "type": "file",
+                            "file_name": "test_main.py",
+                            "description": "Тесты для основного модуля",
                             "io_pairs": []
                         }
                     ]
+                },
+                {
+                    "type": "file",
+                    "file_name": "README.md",
+                    "description": "Документация проекта",
+                    "io_pairs": []
                 }
-                
-                return sample_project
-            
-        except Exception as e:
-            error_details = traceback.format_exc()
-            print(f"Ошибка при генерации структуры проекта: {str(e)}\n{error_details}")
-            return {"error": str(e), "details": error_details} 
+            ]
+        }
+        
+        return sample_project 
