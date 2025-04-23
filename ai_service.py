@@ -4,6 +4,67 @@ import traceback
 import re
 import os
 
+# Класс-заглушка для OpenAI клиента
+class MockOpenAIClient:
+    """Заглушка для OpenAI клиента, которая всегда возвращает предопределенные ответы"""
+    
+    class MockChatCompletion:
+        def create(self, **kwargs):
+            """Имитирует создание сообщения"""
+            prompt = kwargs.get('messages', [{}])[-1].get('content', '')
+            print(f"MockOpenAI: Получен запрос с промптом: {prompt[:50]}...")
+            
+            # Создаем простую структуру объекта ответа, похожую на настоящий ответ OpenAI
+            class MockResponse:
+                class Choice:
+                    class Message:
+                        def __init__(self, content):
+                            self.content = content
+                            
+                    def __init__(self, content):
+                        self.message = self.Message(content)
+                
+                def __init__(self, content):
+                    self.choices = [self.Choice(content)]
+            
+            # Генерируем JSON с простой структурой проекта в зависимости от запроса
+            project_name = prompt.split("\n\n")[1].strip()[:30] + "..."
+            simple_project = {
+                "name": f"Проект: {project_name}",
+                "structure": [
+                    {
+                        "type": "folder",
+                        "name": "src",
+                        "children": [
+                            {
+                                "type": "file",
+                                "file_name": "main.py",
+                                "description": "Основной файл приложения",
+                                "io_pairs": [
+                                    {
+                                        "input": {"command": "start"},
+                                        "output": {"status": "running"}
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "file",
+                        "file_name": "README.md",
+                        "description": "Документация проекта",
+                        "io_pairs": []
+                    }
+                ]
+            }
+            
+            mock_response = json.dumps(simple_project, ensure_ascii=False)
+            return MockResponse(mock_response)
+    
+    def __init__(self, **kwargs):
+        print("Инициализирована заглушка для OpenAI клиента")
+        self.chat = self.MockChatCompletion()
+
 class AIProjectGenerator:
     def __init__(self, api_key=None):
         # Получаем API ключ из переданного параметра или из переменных окружения
@@ -15,17 +76,27 @@ class AIProjectGenerator:
     def initialize_client(self):
         """Инициализирует клиент OpenAI с безопасными настройками"""
         try:
-            # Самая простая форма инициализации
+            # Самая простая форма инициализации без дополнительных переменных окружения
             if self.api_key:
-                # Передаем только API ключ, никаких дополнительных параметров
-                self.client = OpenAI(api_key=self.api_key)
-                print("OpenAI клиент успешно инициализирован")
+                try:
+                    # Пробуем создать настоящий клиент
+                    self.client = OpenAI(api_key=self.api_key)
+                    print("OpenAI клиент успешно инициализирован")
+                except Exception as e:
+                    print(f"Ошибка при создании настоящего клиента: {str(e)}")
+                    print("Инициализируем заглушку для OpenAI клиента")
+                    # Если не удалось создать настоящий клиент, используем заглушку
+                    self.client = MockOpenAIClient(api_key=self.api_key)
             else:
-                print("API ключ не предоставлен")
-                self.client = None
+                print("API ключ не предоставлен, используем заглушку")
+                self.client = MockOpenAIClient()
         except Exception as e:
-            print(f"Ошибка при инициализации OpenAI клиента: {str(e)}")
-            self.client = None
+            print(f"Критическая ошибка при инициализации клиента: {str(e)}")
+            try:
+                # В крайнем случае, всегда пробуем инициализировать заглушку
+                self.client = MockOpenAIClient()
+            except:
+                self.client = None
         
     def generate_project_structure(self, prompt):
         """
@@ -40,12 +111,12 @@ class AIProjectGenerator:
         try:
             # Если клиент не инициализирован, попробуем инициализировать его снова
             if self.client is None:
-                print("Попытка повторной инициализации OpenAI клиента...")
+                print("Попытка повторной инициализации клиента...")
                 self.initialize_client()
                 
             # Проверяем снова, успешно ли инициализирован клиент
             if self.client is None:
-                print("OpenAI клиент по-прежнему не инициализирован, используем заглушку")
+                print("Клиент по-прежнему не инициализирован, используем заглушку")
                 return self._get_sample_project(prompt)
                 
             system_message = """
