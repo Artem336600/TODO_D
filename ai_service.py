@@ -2,9 +2,12 @@ from openai import OpenAI
 import json
 import traceback
 import re
+import os
 
 class AIProjectGenerator:
-    def __init__(self, api_key="sk-abc70a4d8ead416da1f0789918533921"):
+    def __init__(self, api_key=None):
+        # Получаем API ключ из переданного параметра или из переменных окружения
+        api_key = api_key or os.environ.get('OPENAI_API_KEY', "sk-abc70a4d8ead416da1f0789918533921")
         self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
         
     def generate_project_structure(self, prompt):

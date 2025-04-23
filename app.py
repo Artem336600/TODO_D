@@ -7,10 +7,25 @@ from models import User, Project, db
 from forms import LoginForm, RegistrationForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from ai_service import AIProjectGenerator
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла (если он существует)
+load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Замените на случайный секретный ключ
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+# Получаем секретный ключ из переменных окружения или используем значение по умолчанию
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+
+# Настройка базы данных PostgreSQL для Railway или локальная SQLite
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    # Railway иногда возвращает URL, начинающийся с postgres://, но SQLAlchemy ожидает postgresql://
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Используем SQLite для локальной разработки
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Инициализация базы данных
@@ -31,8 +46,10 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
+# Получаем API ключ для OpenAI из переменных окружения
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 # Инициализация AI генератора
-ai_project_generator = AIProjectGenerator()
+ai_project_generator = AIProjectGenerator(api_key=OPENAI_API_KEY)
 
 DATA_FILE = 'data.json'
 
@@ -226,4 +243,8 @@ def delete_project(project_id):
     return jsonify({"error": "Проект не найден"}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Получаем порт из переменных окружения или используем 5000 по умолчанию
+    port = int(os.environ.get('PORT', 5000))
+    # В продакшене используем 0.0.0.0 для привязки ко всем интерфейсам
+    host = '0.0.0.0' if os.environ.get('PRODUCTION') else '127.0.0.1'
+    app.run(host=host, port=port) 

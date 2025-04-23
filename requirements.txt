@@ -6,4 +6,7 @@ werkzeug==2.3.7
 wtforms==3.0.1
 sqlalchemy==2.0.21
 email-validator==2.0.0
-openai==1.6.1 
+openai==1.6.1
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0 
