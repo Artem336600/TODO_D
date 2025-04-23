@@ -1050,4 +1050,131 @@ button svg {
 
 #manual-json-btn:hover {
     background-color: #2980b9;
+}
+
+#show-tree-btn {
+    background-color: #27ae60;
+}
+
+#show-tree-btn:hover {
+    background-color: #219955;
+}
+
+/* Стили для отображения структуры */
+.tree-view-container {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-sm);
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+}
+
+.tree-options {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tree-options h3 {
+    font-size: 1rem;
+    color: var(--text-color);
+    margin: 0;
+    margin-right: auto;
+    font-weight: 600;
+}
+
+#copy-tree-btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#copy-tree-btn:hover {
+    background-color: var(--primary-dark);
+}
+
+.tree-view {
+    background-color: var(--dark-bg);
+    color: var(--text-color);
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+    line-height: 1.5;
+    font-size: 13px;
+    overflow: auto;
+    white-space: pre;
+    height: 180px;
+    border: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .tree-view {
+        height: 150px;
+    }
+}
+
+/* Стили для информации о пользователе */
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.username {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-right: 15px;
+}
+
+.logout-btn {
+    padding: 6px 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Стили для флеш-сообщений */
+.flash-message {
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+}
+
+.flash-message.success {
+    background-color: rgba(39, 174, 96, 0.1);
+    border: 1px solid rgba(39, 174, 96, 0.3);
+    color: #27ae60;
+}
+
+.flash-message.error, .flash-message.danger {
+    background-color: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+}
+
+.flash-message.info {
+    background-color: rgba(52, 152, 219, 0.1);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    color: #3498db;
+}
+
+.flash-message.warning {
+    background-color: rgba(241, 196, 15, 0.1);
+    border: 1px solid rgba(241, 196, 15, 0.3);
+    color: #f1c40f;
 } 

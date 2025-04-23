@@ -13,11 +13,23 @@
             <div class="header-content">
                 <h1>Редактор структуры проекта</h1>
                 <p class="app-description">Создавайте, организуйте и сохраняйте структуру вашего проекта с файлами, папками и документацией</p>
+                <div class="user-info">
+                    <span class="username">{{ current_user.username }}</span>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+                </div>
             </div>
             <div class="header-pattern"></div>
         </header>
         
         <div class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
             <div class="project-selector">
                 <h2>Выберите проект</h2>
                 <div class="project-actions">
@@ -62,6 +74,19 @@
                 
                 <div class="structure-header">
                     <h2>Структура проекта</h2>
+                </div>
+                
+                <div class="tree-view-container">
+                    <div class="tree-options">
+                        <h3>Текстовая структура:</h3>
+                        <button id="copy-tree-btn" onclick="copyTreeToClipboard()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                            </svg>
+                            Копировать
+                        </button>
+                    </div>
+                    <pre id="tree-output" class="tree-view"></pre>
                 </div>
                 
                 <div id="structure-container" class="structure-container">
@@ -197,23 +222,64 @@
         </div>
     </template>
     
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
-
-<!-- Модальное окно для ручного ввода JSON -->
-<div id="json-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Ввод JSON-структуры</h3>
-            <button id="close-modal-btn" class="btn-icon">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p class="modal-description">Введите структуру проекта в формате JSON:</p>
-            <textarea id="json-input" placeholder='{ "name": "Название проекта", "structure": [ ... ] }'></textarea>
-        </div>
-        <div class="modal-footer">
-            <button id="apply-json-btn">Применить</button>
+    <!-- Модальное окно для ручного ввода JSON -->
+    <div id="json-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ввод JSON-структуры</h3>
+                <button id="close-modal-btn" class="btn-icon">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">Введите структуру проекта в формате JSON:</p>
+                <textarea id="json-input" placeholder='{ "name": "Название проекта", "structure": [ ... ] }'></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="apply-json-btn">Применить</button>
+            </div>
         </div>
     </div>
-</div> 
+    
+    <script>
+    function copyTreeToClipboard() {
+        const treeOutput = document.getElementById('tree-output');
+        const text = treeOutput.textContent;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = 'Структура скопирована в буфер обмена';
+            statusMessage.className = 'success';
+            statusMessage.classList.add('active');
+            
+            // Автоматическое скрытие сообщения
+            setTimeout(() => {
+                statusMessage.classList.remove('active');
+                
+                // Очистка сообщения после анимации
+                setTimeout(() => {
+                    statusMessage.textContent = '';
+                    statusMessage.className = '';
+                }, 400);
+            }, 5000);
+        }, (err) => {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = 'Не удалось скопировать: ' + err;
+            statusMessage.className = 'error';
+            statusMessage.classList.add('active');
+            
+            // Автоматическое скрытие сообщения
+            setTimeout(() => {
+                statusMessage.classList.remove('active');
+                
+                // Очистка сообщения после анимации
+                setTimeout(() => {
+                    statusMessage.textContent = '';
+                    statusMessage.className = '';
+                }, 400);
+            }, 5000);
+        });
+    }
+    </script>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html> 

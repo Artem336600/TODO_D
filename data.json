@@ -10,12 +10,32 @@
             {
               "type": "file",
               "file_name": "фывф",
-              "description": ""
+              "description": "",
+              "io_pairs": [
+                {
+                  "input": {},
+                  "output": {}
+                }
+              ],
+              "input_mock": {},
+              "output_mock": {},
+              "input_mocks": [
+                {}
+              ],
+              "output_mocks": [
+                {}
+              ]
             },
             {
               "type": "folder",
               "name": "фыв",
-              "children": []
+              "children": [
+                {
+                  "type": "folder",
+                  "name": "выаыва",
+                  "children": []
+                }
+              ]
             }
           ]
         }
