@@ -7,13 +7,24 @@ import os
 class AIProjectGenerator:
     def __init__(self, api_key=None):
         # Получаем API ключ из переданного параметра или из переменных окружения
-        self.api_key = api_key or os.environ.get('OPENAI_API_KEY', "sk-abc70a4d8ead416da1f0789918533921")
-        # Упрощенная инициализация клиента
+        self.api_key = api_key or os.environ.get('OPENAI_API_KEY')
+        # Инициализируем клиент как None, будем создавать его при каждом запросе
+        self.client = None
+        self.initialize_client()
+        
+    def initialize_client(self):
+        """Инициализирует клиент OpenAI с безопасными настройками"""
         try:
-            self.client = OpenAI(api_key=self.api_key)
-            print("OpenAI клиент инициализирован успешно")
+            # Самая простая форма инициализации
+            if self.api_key:
+                # Передаем только API ключ, никаких дополнительных параметров
+                self.client = OpenAI(api_key=self.api_key)
+                print("OpenAI клиент успешно инициализирован")
+            else:
+                print("API ключ не предоставлен")
+                self.client = None
         except Exception as e:
-            print(f"Ошибка при инициализации OpenAI клиента: {e}")
+            print(f"Ошибка при инициализации OpenAI клиента: {str(e)}")
             self.client = None
         
     def generate_project_structure(self, prompt):
@@ -27,9 +38,14 @@ class AIProjectGenerator:
             dict: Структура проекта в формате JSON
         """
         try:
-            # Проверяем, успешно ли инициализирован клиент
+            # Если клиент не инициализирован, попробуем инициализировать его снова
             if self.client is None:
-                print("OpenAI клиент не инициализирован, используем заглушку")
+                print("Попытка повторной инициализации OpenAI клиента...")
+                self.initialize_client()
+                
+            # Проверяем снова, успешно ли инициализирован клиент
+            if self.client is None:
+                print("OpenAI клиент по-прежнему не инициализирован, используем заглушку")
                 return self._get_sample_project(prompt)
                 
             system_message = """
@@ -89,15 +105,14 @@ class AIProjectGenerator:
             print(f"Отправка запроса к API с промптом: {prompt[:50]}...")
             
             try:
-                # Используем стандартную модель OpenAI
+                # Упрощенный вызов API с минимумом параметров
                 response = self.client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": enhanced_prompt}
                     ],
-                    temperature=0.7,
-                    max_tokens=2000
+                    temperature=0.7
                 )
                 
                 result = response.choices[0].message.content
